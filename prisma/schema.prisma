@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BetResult {
+  win
+  loss
+  void
+}
+
+enum BetType {
+  straight
+  same_game_parlay
+  parlay
+}
+
+model Bet {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  wager           Decimal   @db.Decimal(10, 2)
+  payout          Decimal   @db.Decimal(10, 2)
+  odds            Decimal   @db.Decimal(10, 2)
+  date            DateTime
+  result          BetResult
+  betType         BetType   @map("bet_type")
+  isBonusBet      Boolean   @default(false) @map("is_bonus_bet")
+  boostPercentage Int?      @map("boost_percentage")
+  isNoSweat       Boolean   @default(false) @map("is_no_sweat")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  legs Leg[]
+
+  @@index([userId])
+  @@index([date])
+  @@map("bets")
+}
+
+model Leg {
+  id          String    @id @default(uuid())
+  betId       String    @map("bet_id")
+  description String    @db.Text
+  eventName   String    @map("event_name")
+  odds        Decimal   @db.Decimal(10, 2)
+  result      BetResult
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  bet Bet @relation(fields: [betId], references: [id], onDelete: Cascade)
+
+  @@index([betId])
+  @@index([eventName])
+  @@map("legs")
+}

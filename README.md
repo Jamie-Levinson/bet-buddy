@@ -1,36 +1,129 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BetBuddy
+
+A mobile-friendly PWA for tracking your sports bets and analyzing your betting history.
+
+## Features
+
+- **Manual Bet Entry**: Track straight bets, same game parlays, and parlays
+- **Bet Management**: Create, edit, and delete bets with full leg tracking
+- **Analytics Dashboard**: View profit/loss, win rate, ROI, and betting trends
+- **Mobile-Friendly**: Responsive design optimized for mobile devices
+- **PWA Support**: Install as a mobile app for easy access
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui
+- **Database**: Supabase (PostgreSQL)
+- **ORM**: Prisma
+- **Authentication**: Supabase Auth
+- **Charts**: Recharts
+- **Form Management**: React Hook Form + Zod
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18+ and npm
+- A Supabase account
+
+### Setup Instructions
+
+1. **Clone and install dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Set up Supabase**:
+   - Create a new Supabase project at [supabase.com](https://supabase.com)
+   - Go to Settings > API to get your project URL and anon key
+   - Go to Settings > Database to get your connection string
+
+3. **Configure environment variables**:
+   Create a `.env` file in the root directory:
+   ```env
+   DATABASE_URL="postgresql://user:password@host:5432/database?schema=public"
+   NEXT_PUBLIC_SUPABASE_URL="your-supabase-url"
+   NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
+   SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+   ```
+
+4. **Set up the database**:
+   ```bash
+   npx prisma migrate dev --name init
+   npx prisma generate
+   ```
+
+5. **Run the development server**:
+   ```bash
+   npm run dev
+   ```
+
+6. **Open your browser**:
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+## Project Structure
+
+```
+betbuddy/
+├── app/                    # Next.js App Router pages
+│   ├── (auth)/            # Authentication pages
+│   ├── bets/              # Bet management pages
+│   ├── dashboard/         # Analytics dashboard
+│   └── layout.tsx         # Root layout
+├── components/            # React components
+│   ├── ui/                # shadcn/ui components
+│   ├── Analytics.tsx      # Analytics dashboard
+│   ├── BetForm.tsx        # Bet entry form
+│   └── BetList.tsx        # Bets list view
+├── actions/               # Server Actions
+│   ├── auth-actions.ts    # Authentication actions
+│   └── bet-actions.ts     # Bet CRUD actions
+├── lib/                   # Utility functions
+│   ├── auth.ts            # Auth helpers
+│   ├── prisma.ts          # Prisma client
+│   ├── supabase.ts        # Supabase client
+│   └── validations/        # Zod schemas
+└── prisma/
+    └── schema.prisma      # Database schema
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Database Schema
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **bets**: Main bet records with wager, payout, odds, result, and modifiers
+- **legs**: Individual bet legs with description, event name, and odds
+- **users**: Handled by Supabase Auth
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Features in Detail
 
-## Learn More
+### Bet Types
+- **Straight**: Single leg from a single event
+- **Same Game Parlay**: Multiple legs from the same event
+- **Parlay**: Multiple legs from different events
 
-To learn more about Next.js, take a look at the following resources:
+### Modifiers
+- **Bonus Bet**: Bet placed with credits (no real money)
+- **Boost**: Percentage boost to original odds (25%, 30%, 50%, etc.)
+- **No Sweat**: Refund as bonus bets if the bet loses
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Analytics
+- Total wagered amount
+- Total profit/loss
+- Win rate percentage
+- ROI (Return on Investment)
+- Bet count by type
+- Profit trend over time (last 30 days)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Future Enhancements
 
-## Deploy on Vercel
+- Screenshot upload and OCR parsing
+- Share link parsing from sportsbooks
+- Advanced analytics (unit sizing, EV calculations)
+- Multiple sportsbook integrations
+- Social features
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
