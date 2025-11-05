@@ -33,27 +33,40 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
   }
 
   const defaultValues: Partial<BetFormData> = {
-    betType: bet.betType,
-    wager: Number(bet.wager),
-    payout: Number(bet.payout),
-    odds: Number(bet.odds),
+    wager: bet.wager,
     date: format(new Date(bet.date), "yyyy-MM-dd"),
-    result: bet.result,
+    result: bet.result || "pending",
     isBonusBet: bet.isBonusBet,
     boostPercentage: bet.boostPercentage ?? undefined,
     isNoSweat: bet.isNoSweat,
-    legs: bet.legs.map((leg: { description: string; eventName: string; odds: any; result: "win" | "loss" | "void" }) => ({
+    legs: bet.legs.map((leg) => ({
       description: leg.description,
       eventName: leg.eventName,
-      odds: Number(leg.odds),
-      result: leg.result,
+      odds: leg.odds,
     })),
   };
 
   return (
     <div className="container mx-auto max-w-4xl p-4">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Edit Bet</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Edit Bet</h1>
+          <div className="mt-2 flex items-center gap-2">
+            <Badge
+              className={
+                bet.result === "pending"
+                  ? "bg-yellow-500"
+                  : bet.result === "win"
+                    ? "bg-green-500"
+                    : bet.result === "loss"
+                      ? "bg-red-500"
+                      : "bg-gray-500"
+              }
+            >
+              {bet.result === "pending" ? "Unsettled" : bet.result.charAt(0).toUpperCase() + bet.result.slice(1)}
+            </Badge>
+          </div>
+        </div>
         <div className="flex gap-2">
           <Link href="/bets">
             <Button variant="outline">Back to Bets</Button>

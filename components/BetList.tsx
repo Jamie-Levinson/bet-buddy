@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Pencil } from "lucide-react";
+import { BetResultEditor } from "@/components/BetResultEditor";
 import type { SerializedBetWithLegs } from "@/lib/serialize";
 
 interface BetListProps {
@@ -42,12 +44,26 @@ export function BetList({ bets, total, page, totalPages }: BetListProps) {
         return "bg-red-500";
       case "void":
         return "bg-gray-500";
+      case "pending":
+        return "bg-yellow-500";
       default:
         return "bg-gray-500";
     }
   };
 
+  const getResultLabel = (result: string) => {
+    switch (result) {
+      case "pending":
+        return "Unsettled";
+      default:
+        return result.charAt(0).toUpperCase() + result.slice(1);
+    }
+  };
+
   const calculateProfit = (bet: SerializedBetWithLegs) => {
+    if (bet.result === "pending") {
+      return null; // No profit calculation for pending bets
+    }
     if (bet.result === "win") {
       return bet.payout - bet.wager;
     } else if (bet.result === "loss") {
@@ -68,8 +84,9 @@ export function BetList({ bets, total, page, totalPages }: BetListProps) {
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by result" />
             </SelectTrigger>
-            <SelectContent>
+              <SelectContent>
               <SelectItem value="all">All Results</SelectItem>
+              <SelectItem value="pending">Unsettled</SelectItem>
               <SelectItem value="win">Win</SelectItem>
               <SelectItem value="loss">Loss</SelectItem>
               <SelectItem value="void">Void</SelectItem>
@@ -132,11 +149,23 @@ export function BetList({ bets, total, page, totalPages }: BetListProps) {
                       <TableCell>${bet.payout.toFixed(2)}</TableCell>
                       <TableCell>{bet.odds.toFixed(2)}</TableCell>
                       <TableCell>
-                        <Badge className={getResultColor(bet.result)}>{bet.result}</Badge>
+                        <BetResultEditor betId={bet.id} currentResult={bet.result} />
                       </TableCell>
-                      <TableCell className={profit >= 0 ? "text-green-600" : "text-red-600"}>
-                        ${profit >= 0 ? "+" : ""}
-                        {profit.toFixed(2)}
+                      <TableCell className={
+                        profit === null || bet.result === "pending" 
+                          ? "text-muted-foreground" 
+                          : profit >= 0 
+                            ? "text-green-600" 
+                            : "text-red-600"
+                      }>
+                        {profit === null || bet.result === "pending" ? (
+                          "-"
+                        ) : (
+                          <>
+                            ${profit >= 0 ? "+" : ""}
+                            {profit.toFixed(2)}
+                          </>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
@@ -149,8 +178,9 @@ export function BetList({ bets, total, page, totalPages }: BetListProps) {
                       </TableCell>
                       <TableCell>
                         <Link href={`/bets/${bet.id}`}>
-                          <Button variant="ghost" size="sm">
-                            View
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">Edit bet</span>
                           </Button>
                         </Link>
                       </TableCell>

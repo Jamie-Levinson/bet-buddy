@@ -12,17 +12,19 @@ interface AnalyticsProps {
 
 export function Analytics({ bets }: AnalyticsProps) {
   const stats = useMemo(() => {
-    const totalWagered = bets.reduce((sum, bet) => sum + bet.wager, 0);
-    const totalPayout = bets.reduce((sum, bet) => {
+    // Only count settled bets for profit/loss calculations
+    const settledBets = bets.filter((bet) => bet.result !== "pending");
+    const totalWagered = settledBets.reduce((sum, bet) => sum + bet.wager, 0);
+    const totalPayout = settledBets.reduce((sum, bet) => {
       if (bet.result === "win") {
         return sum + bet.payout;
       }
       return sum;
     }, 0);
     const totalProfit = totalPayout - totalWagered;
-    const winCount = bets.filter((bet) => bet.result === "win").length;
-    const lossCount = bets.filter((bet) => bet.result === "loss").length;
-    const winRate = bets.length > 0 ? (winCount / (winCount + lossCount)) * 100 : 0;
+    const winCount = settledBets.filter((bet) => bet.result === "win").length;
+    const lossCount = settledBets.filter((bet) => bet.result === "loss").length;
+    const winRate = settledBets.length > 0 ? (winCount / (winCount + lossCount)) * 100 : 0;
     const roi = totalWagered > 0 ? (totalProfit / totalWagered) * 100 : 0;
 
     const betCountByType = bets.reduce(
@@ -37,7 +39,7 @@ export function Analytics({ bets }: AnalyticsProps) {
     const last30Days = Array.from({ length: 30 }, (_, i) => subDays(new Date(), 29 - i));
     const profitTrend = last30Days.map((date) => {
       const dayBets = bets.filter(
-        (bet) => format(new Date(bet.date), "yyyy-MM-dd") === format(date, "yyyy-MM-dd")
+        (bet) => format(new Date(bet.date), "yyyy-MM-dd") === format(date, "yyyy-MM-dd") && bet.result !== "pending"
       );
       const profit = dayBets.reduce((sum, bet) => {
         if (bet.result === "win") {
@@ -61,6 +63,8 @@ export function Analytics({ bets }: AnalyticsProps) {
       betCountByType,
       profitTrend,
       totalBets: bets.length,
+      pendingBets: bets.filter((bet) => bet.result === "pending").length,
+      settledBets: settledBets.length,
     };
   }, [bets]);
 
@@ -151,10 +155,16 @@ export function Analytics({ bets }: AnalyticsProps) {
           <CardTitle>Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
             <div>
               <p className="text-sm text-muted-foreground">Total Bets</p>
               <p className="text-2xl font-bold">{stats.totalBets}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Unsettled</p>
+              <p className="text-2xl font-bold text-yellow-600">
+                {stats.pendingBets}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Wins</p>
@@ -169,9 +179,9 @@ export function Analytics({ bets }: AnalyticsProps) {
               </p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Average Wager</p>
+              <p className="text-sm text-muted-foreground">Avg Wager</p>
               <p className="text-2xl font-bold">
-                ${stats.totalBets > 0 ? (stats.totalWagered / stats.totalBets).toFixed(2) : "0.00"}
+                ${stats.settledBets > 0 ? (stats.totalWagered / stats.settledBets).toFixed(2) : "0.00"}
               </p>
             </div>
           </div>

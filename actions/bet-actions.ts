@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { betFormSchema, type BetFormData } from "@/lib/validations/bet";
 import { revalidatePath } from "next/cache";
+import { serializeBet, serializeBets, type SerializedBetWithLegs } from "@/lib/serialize";
 
 export async function createBet(data: BetFormData) {
   const user = await getCurrentUser();
@@ -21,7 +22,7 @@ export async function createBet(data: BetFormData) {
       odds: validated.odds,
       date: new Date(validated.date),
       result: validated.result,
-      betType: validated.betType,
+      betType: validated.betType!,
       isBonusBet: validated.isBonusBet,
       boostPercentage: validated.boostPercentage ?? null,
       isNoSweat: validated.isNoSweat,
@@ -30,7 +31,7 @@ export async function createBet(data: BetFormData) {
           description: leg.description,
           eventName: leg.eventName,
           odds: leg.odds,
-          result: leg.result,
+          result: "pending" as const,
         })),
       },
     },
@@ -73,8 +74,11 @@ export async function getBets(page = 1, pageSize = 20) {
     }),
   ]);
 
+  // Serialize immediately to convert Decimal to number
+  const serializedBets = serializeBets(bets);
+
   return {
-    bets,
+    bets: serializedBets,
     total,
     page,
     pageSize,
@@ -82,7 +86,7 @@ export async function getBets(page = 1, pageSize = 20) {
   };
 }
 
-export async function getBet(id: string) {
+export async function getBet(id: string): Promise<SerializedBetWithLegs> {
   const user = await getCurrentUser();
   if (!user) {
     throw new Error("Unauthorized");
@@ -102,7 +106,8 @@ export async function getBet(id: string) {
     throw new Error("Bet not found");
   }
 
-  return bet;
+  // Serialize immediately to convert Decimal to number
+  return serializeBet(bet);
 }
 
 export async function updateBet(id: string, data: BetFormData) {
@@ -125,7 +130,6 @@ export async function updateBet(id: string, data: BetFormData) {
     throw new Error("Bet not found");
   }
 
-  // Update bet and legs
   const bet = await prisma.bet.update({
     where: {
       id,
@@ -136,7 +140,7 @@ export async function updateBet(id: string, data: BetFormData) {
       odds: validated.odds,
       date: new Date(validated.date),
       result: validated.result,
-      betType: validated.betType,
+      betType: validated.betType!,
       isBonusBet: validated.isBonusBet,
       boostPercentage: validated.boostPercentage ?? null,
       isNoSweat: validated.isNoSweat,
@@ -146,7 +150,7 @@ export async function updateBet(id: string, data: BetFormData) {
           description: leg.description,
           eventName: leg.eventName,
           odds: leg.odds,
-          result: leg.result,
+          result: "pending" as const,
         })),
       },
     },
@@ -158,7 +162,41 @@ export async function updateBet(id: string, data: BetFormData) {
   revalidatePath("/dashboard");
   revalidatePath("/bets");
   revalidatePath(`/bets/${id}`);
-  return bet;
+  
+  // Serialize before returning
+  return serializeBet(bet);
+}
+
+export async function updateBetResult(id: string, result: "pending" | "win" | "loss" | "void") {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
+
+  // Verify ownership
+  const existingBet = await prisma.bet.findFirst({
+    where: {
+      id,
+      userId: user.id,
+    },
+  });
+
+  if (!existingBet) {
+    throw new Error("Bet not found");
+  }
+
+  await prisma.bet.update({
+    where: {
+      id,
+    },
+    data: {
+      result,
+    },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/bets");
+  revalidatePath(`/bets/${id}`);
 }
 
 export async function deleteBet(id: string) {
@@ -188,4 +226,3 @@ export async function deleteBet(id: string) {
   revalidatePath("/dashboard");
   revalidatePath("/bets");
 }
-

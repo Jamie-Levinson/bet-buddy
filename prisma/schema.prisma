@@ -14,6 +14,7 @@ datasource db {
 }
 
 enum BetResult {
+  pending
   win
   loss
   void

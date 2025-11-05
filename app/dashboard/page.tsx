@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getBets } from "@/actions/bet-actions";
 import { Analytics } from "@/components/Analytics";
-import { serializeBets } from "@/lib/serialize";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -14,9 +13,6 @@ export default async function DashboardPage() {
   }
 
   const { bets } = await getBets(1, 100); // Get more bets for analytics
-
-  // Serialize Decimal fields to numbers for client components
-  const serializedBets = serializeBets(bets);
 
   return (
     <div className="container mx-auto p-4">
@@ -32,7 +28,7 @@ export default async function DashboardPage() {
         </div>
       </div>
       <p className="mb-6 text-muted-foreground">Welcome, {user.email}</p>
-      <Analytics bets={serializedBets} />
+      <Analytics bets={bets} />
     </div>
   );
 }

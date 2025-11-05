@@ -2,7 +2,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getBets } from "@/actions/bet-actions";
 import { BetList } from "@/components/BetList";
-import { serializeBets } from "@/lib/serialize";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -23,9 +22,6 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
   const page = parseInt(params.page || "1", 10);
   const { bets, total, totalPages } = await getBets(page, 20);
 
-  // Serialize Decimal fields to numbers for client components
-  const serializedBets = serializeBets(bets);
-
   return (
     <div className="container mx-auto p-4">
       <div className="mb-6 flex items-center justify-between">
@@ -34,7 +30,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
           <Button>New Bet</Button>
         </Link>
       </div>
-      <BetList bets={serializedBets} total={total} page={page} totalPages={totalPages} />
+      <BetList bets={bets} total={total} page={page} totalPages={totalPages} />
     </div>
   );
 }

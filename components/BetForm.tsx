@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { betFormSchema, type BetFormData } from "@/lib/validations/bet";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 
 interface BetFormProps {
   onSubmit: (data: BetFormData) => Promise<void>;
@@ -30,11 +31,10 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
   } = useForm<BetFormData>({
     resolver: zodResolver(betFormSchema) as any,
     defaultValues: {
-      betType: "straight",
-      result: "win",
+      result: "pending",
       isBonusBet: false,
       isNoSweat: false,
-      legs: [{ description: "", eventName: "", odds: 0, result: "win" }],
+      legs: [{ description: "", eventName: "", odds: 0 }],
       date: new Date().toISOString().split("T")[0],
       ...defaultValues,
     },
@@ -45,7 +45,44 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
     name: "legs",
   });
 
-  const betType = watch("betType");
+  // Watch form values for real-time calculations
+  const legs = watch("legs");
+  const wager = watch("wager");
+  const isBonusBet = watch("isBonusBet");
+  const boostPercentage = watch("boostPercentage");
+  const isNoSweat = watch("isNoSweat");
+
+  // Calculate bet type from legs
+  const calculatedBetType = useMemo(() => {
+    if (!legs || legs.length === 0) return null;
+    if (legs.length === 1) return "straight";
+    const uniqueEvents = new Set(legs.map((leg) => leg.eventName).filter(Boolean));
+    if (uniqueEvents.size === 1) return "same_game_parlay";
+    return "parlay";
+  }, [legs]);
+
+  // Calculate total odds from legs
+  const calculatedOdds = useMemo(() => {
+    if (!legs || legs.length === 0) return 0;
+    return legs.reduce((acc, leg) => {
+      const odds = leg.odds || 0;
+      return acc * (odds > 0 ? odds : 1);
+    }, 1);
+  }, [legs]);
+
+  // Calculate payout
+  const calculatedPayout = useMemo(() => {
+    if (!wager || calculatedOdds === 0) return 0;
+    const basePayout = wager * calculatedOdds;
+    
+    if (isBonusBet) {
+      return basePayout - wager; // Profit only
+    } else if (boostPercentage) {
+      return basePayout * (1 + boostPercentage / 100);
+    } else {
+      return basePayout;
+    }
+  }, [wager, calculatedOdds, isBonusBet, boostPercentage]);
 
   const onFormSubmit = async (data: BetFormData) => {
     setIsSubmitting(true);
@@ -56,94 +93,32 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
     }
   };
 
+  const getBetTypeLabel = (type: string | null) => {
+    switch (type) {
+      case "straight":
+        return "Straight";
+      case "same_game_parlay":
+        return "Same Game Parlay";
+      case "parlay":
+        return "Parlay";
+      default:
+        return "Unknown";
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
+      {/* Legs Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Bet Details</CardTitle>
-          <CardDescription>Enter the basic information about your bet</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="betType">Bet Type</Label>
-            <Select
-              value={watch("betType")}
-              onValueChange={(value) => setValue("betType", value as BetFormData["betType"])}
-            >
-              <SelectTrigger id="betType">
-                <SelectValue placeholder="Select bet type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="straight">Straight</SelectItem>
-                <SelectItem value="same_game_parlay">Same Game Parlay</SelectItem>
-                <SelectItem value="parlay">Parlay</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.betType && <p className="text-sm text-destructive">{errors.betType.message}</p>}
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="wager">Wager ($)</Label>
-              <Input id="wager" type="number" step="0.01" {...register("wager")} />
-              {errors.wager && <p className="text-sm text-destructive">{errors.wager.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="payout">Payout ($)</Label>
-              <Input id="payout" type="number" step="0.01" {...register("payout")} />
-              {errors.payout && <p className="text-sm text-destructive">{errors.payout.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="odds">Odds</Label>
-              <Input id="odds" type="number" step="0.01" {...register("odds")} />
-              {errors.odds && <p className="text-sm text-destructive">{errors.odds.message}</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="date">Date</Label>
-              <Input id="date" type="date" {...register("date")} />
-              {errors.date && <p className="text-sm text-destructive">{errors.date.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="result">Result</Label>
-              <Select
-                value={watch("result")}
-                onValueChange={(value) => setValue("result", value as BetFormData["result"])}
-              >
-                <SelectTrigger id="result">
-                  <SelectValue placeholder="Select result" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="win">Win</SelectItem>
-                  <SelectItem value="loss">Loss</SelectItem>
-                  <SelectItem value="void">Void</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.result && <p className="text-sm text-destructive">{errors.result.message}</p>}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Legs</CardTitle>
+          <CardTitle>Bet Legs</CardTitle>
           <CardDescription>
-            {betType === "straight"
-              ? "Enter the single leg for this straight bet"
-              : betType === "same_game_parlay"
-                ? "Enter all legs from the same game"
-                : "Enter all legs from different events"}
+            Add the legs of your bet. The bet type will be automatically detected based on the number of legs and events.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {fields.map((field, index) => (
-            <div key={field.id} className="space-y-4 rounded-lg border p-4">
+            <div key={field.id} className="space-y-4 rounded-lg border p-4 bg-muted/50">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium">Leg {index + 1}</h3>
                 {fields.length > 1 && (
@@ -154,10 +129,13 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor={`legs.${index}.description`}>Description</Label>
+                <Label htmlFor={`legs.${index}.description`}>
+                  Description <span className="text-destructive">*</span>
+                </Label>
                 <Textarea
                   id={`legs.${index}.description`}
-                  placeholder="e.g., Lakers -5.5"
+                  placeholder="e.g., Lakers -5.5, Over 220.5 points"
+                  className={errors.legs?.[index]?.description ? "border-destructive" : ""}
                   {...register(`legs.${index}.description`)}
                 />
                 {errors.legs?.[index]?.description && (
@@ -167,19 +145,31 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor={`legs.${index}.eventName`}>Event Name</Label>
-                  <Input id={`legs.${index}.eventName`} {...register(`legs.${index}.eventName`)} />
+                  <Label htmlFor={`legs.${index}.eventName`}>
+                    Event Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id={`legs.${index}.eventName`}
+                    placeholder="e.g., Lakers vs Warriors"
+                    className={errors.legs?.[index]?.eventName ? "border-destructive" : ""}
+                    {...register(`legs.${index}.eventName`)}
+                  />
                   {errors.legs?.[index]?.eventName && (
                     <p className="text-sm text-destructive">{errors.legs[index]?.eventName?.message}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor={`legs.${index}.odds`}>Odds</Label>
+                  <Label htmlFor={`legs.${index}.odds`}>
+                    Odds <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     id={`legs.${index}.odds`}
                     type="number"
                     step="0.01"
+                    min="1.01"
+                    placeholder="e.g., 1.85"
+                    className={errors.legs?.[index]?.odds ? "border-destructive" : ""}
                     {...register(`legs.${index}.odds`)}
                   />
                   {errors.legs?.[index]?.odds && (
@@ -187,71 +177,152 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                   )}
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor={`legs.${index}.result`}>Result</Label>
-                <Select
-                  value={watch(`legs.${index}.result`)}
-                  onValueChange={(value) =>
-                    setValue(`legs.${index}.result`, value as "win" | "loss" | "void", { shouldValidate: true })
-                  }
-                >
-                  <SelectTrigger id={`legs.${index}.result`}>
-                    <SelectValue placeholder="Select result" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="win">Win</SelectItem>
-                    <SelectItem value="loss">Loss</SelectItem>
-                    <SelectItem value="void">Void</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.legs?.[index]?.result && (
-                  <p className="text-sm text-destructive">{errors.legs[index]?.result?.message}</p>
-                )}
-              </div>
             </div>
           ))}
 
-          {betType !== "straight" && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => append({ description: "", eventName: "", odds: 0, result: "win" })}
-            >
-              Add Leg
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => append({ description: "", eventName: "", odds: 0 })}
+            className="w-full"
+          >
+            Add Leg
+          </Button>
         </CardContent>
       </Card>
 
+      {/* Bet Details Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Bet Details</CardTitle>
+          <CardDescription>Enter the wager and date for your bet</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="wager">
+                Wager ($) <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="wager"
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="0.00"
+                className={errors.wager ? "border-destructive" : ""}
+                {...register("wager")}
+              />
+              {errors.wager && <p className="text-sm text-destructive">{errors.wager.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="date">
+                Date <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="date"
+                type="date"
+                className={errors.date ? "border-destructive" : ""}
+                {...register("date")}
+              />
+              {errors.date && <p className="text-sm text-destructive">{errors.date.message}</p>}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Calculated Values Display */}
+      {(calculatedBetType || calculatedOdds > 0 || (wager && calculatedPayout > 0)) && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span>Calculated Values</span>
+              <Badge variant="secondary" className="text-xs">Auto-calculated</Badge>
+            </CardTitle>
+            <CardDescription>These values update automatically as you enter your bet details</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {calculatedBetType && (
+                <div className="space-y-2 rounded-lg border bg-card p-4">
+                  <Label className="text-sm text-muted-foreground">Bet Type</Label>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-base px-3 py-1.5 font-semibold">
+                      {getBetTypeLabel(calculatedBetType)}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {calculatedBetType === "straight" 
+                      ? "Single leg bet"
+                      : calculatedBetType === "same_game_parlay"
+                        ? "Multiple legs from same event"
+                        : "Multiple legs from different events"}
+                  </p>
+                </div>
+              )}
+
+              {calculatedOdds > 0 && (
+                <div className="space-y-2 rounded-lg border bg-card p-4">
+                  <Label className="text-sm text-muted-foreground">Total Odds</Label>
+                  <div className="text-3xl font-bold">
+                    {calculatedOdds.toFixed(2)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {legs.length > 1 ? `Product of ${legs.length} legs` : "Single leg odds"}
+                  </p>
+                </div>
+              )}
+
+              {wager && calculatedPayout > 0 && (
+                <div className="space-y-2 rounded-lg border bg-card p-4">
+                  <Label className="text-sm text-muted-foreground">Potential Payout</Label>
+                  <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                    ${calculatedPayout.toFixed(2)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {isBonusBet && "Profit only (no stake returned)"}
+                    {boostPercentage && !isBonusBet && `${boostPercentage}% boost applied`}
+                    {!isBonusBet && !boostPercentage && "Includes stake"}
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Modifiers Section */}
       <Card>
         <CardHeader>
           <CardTitle>Modifiers</CardTitle>
-          <CardDescription>Additional bet characteristics</CardDescription>
+          <CardDescription>Additional bet characteristics that affect payout calculation</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center space-x-2">
             <Checkbox
               id="isBonusBet"
-              checked={watch("isBonusBet")}
+              checked={isBonusBet}
               onCheckedChange={(checked) => setValue("isBonusBet", checked === true)}
             />
             <Label htmlFor="isBonusBet" className="cursor-pointer">
-              Bonus Bet (placed with credits)
+              Bonus Bet (placed with credits - profit only, no stake returned)
             </Label>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="boostPercentage">Boost Percentage</Label>
+            <Label htmlFor="boostPercentage">Boost Percentage (Optional)</Label>
             <Input
               id="boostPercentage"
               type="number"
               step="1"
               min="0"
               max="100"
-              placeholder="25, 30, 50, etc."
+              placeholder="Leave empty for no boost, or enter 25, 30, 50, etc."
               {...register("boostPercentage")}
             />
+            <p className="text-xs text-muted-foreground">
+              Leave empty for no boost. Enter a percentage (e.g., 40 for 40% boost). The payout will be multiplied by (1 + boost% / 100).
+            </p>
             {errors.boostPercentage && (
               <p className="text-sm text-destructive">{errors.boostPercentage.message}</p>
             )}
@@ -260,22 +331,52 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="isNoSweat"
-              checked={watch("isNoSweat")}
+              checked={isNoSweat}
               onCheckedChange={(checked) => setValue("isNoSweat", checked === true)}
             />
             <Label htmlFor="isNoSweat" className="cursor-pointer">
-              No Sweat (refund as bonus if loses)
+              No Sweat (refund as bonus bets if the bet loses)
             </Label>
           </div>
         </CardContent>
       </Card>
 
+      {/* Result Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Result</CardTitle>
+          <CardDescription>Set the result of your bet. Leave as "Unsettled" if the bet hasn't completed yet.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Label htmlFor="result">Bet Result</Label>
+            <Select
+              value={watch("result") || "pending"}
+              onValueChange={(value) => setValue("result", value as BetFormData["result"])}
+            >
+              <SelectTrigger id="result" className={errors.result ? "border-destructive" : ""}>
+                <SelectValue placeholder="Select result" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Unsettled</SelectItem>
+                <SelectItem value="win">Win</SelectItem>
+                <SelectItem value="loss">Loss</SelectItem>
+                <SelectItem value="void">Void</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.result && <p className="text-sm text-destructive">{errors.result.message}</p>}
+            <p className="text-xs text-muted-foreground">
+              Select "Unsettled" if the bet hasn't completed yet. You can update this later.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end space-x-4">
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} size="lg">
           {isSubmitting ? "Saving..." : "Save Bet"}
         </Button>
       </div>
     </form>
   );
 }
-
