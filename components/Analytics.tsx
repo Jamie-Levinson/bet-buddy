@@ -75,36 +75,36 @@ export function Analytics({ bets }: AnalyticsProps) {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Wagered</CardDescription>
-            <CardTitle className="text-2xl">${stats.totalWagered.toFixed(2)}</CardTitle>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-row flex-nowrap gap-1.5 sm:gap-4 w-full justify-center">
+        <Card className="min-w-[70px] flex-1 max-w-[120px] sm:max-w-none">
+          <CardHeader className="pb-1 px-1.5 sm:pb-2 sm:px-6">
+            <CardDescription className="text-[9px] sm:text-xs text-center" style={{ fontSize: 'clamp(0.5625rem, 2vw, 0.75rem)' }}>Total Wagered</CardDescription>
+            <CardTitle className="text-sm sm:text-xl text-center" style={{ fontSize: 'clamp(0.75rem, 3.5vw, 1.5rem)' }}>${stats.totalWagered.toFixed(2)}</CardTitle>
           </CardHeader>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Profit/Loss</CardDescription>
-            <CardTitle className={`text-2xl ${stats.totalProfit >= 0 ? "text-win-green" : "text-destructive"}`}>
+        <Card className="min-w-[70px] flex-1 max-w-[120px] sm:max-w-none">
+          <CardHeader className="pb-1 px-1.5 sm:pb-2 sm:px-6">
+            <CardDescription className="text-[9px] sm:text-xs text-center" style={{ fontSize: 'clamp(0.5625rem, 2vw, 0.75rem)' }}>Profit/Loss</CardDescription>
+            <CardTitle className={`text-sm sm:text-xl text-center ${stats.totalProfit >= 0 ? "text-win-green" : "text-destructive"}`} style={{ fontSize: 'clamp(0.75rem, 3.5vw, 1.5rem)' }}>
               ${stats.totalProfit >= 0 ? "+" : ""}
               {stats.totalProfit.toFixed(2)}
             </CardTitle>
           </CardHeader>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Win Rate</CardDescription>
-            <CardTitle className="text-2xl">{stats.winRate.toFixed(1)}%</CardTitle>
+        <Card className="min-w-[70px] flex-1 max-w-[120px] sm:max-w-none">
+          <CardHeader className="pb-1 px-1.5 sm:pb-2 sm:px-6">
+            <CardDescription className="text-[9px] sm:text-xs text-center" style={{ fontSize: 'clamp(0.5625rem, 2vw, 0.75rem)' }}>Win Rate</CardDescription>
+            <CardTitle className="text-sm sm:text-xl text-center" style={{ fontSize: 'clamp(0.75rem, 3.5vw, 1.5rem)' }}>{stats.winRate.toFixed(1)}%</CardTitle>
           </CardHeader>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>ROI</CardDescription>
-            <CardTitle className={`text-2xl ${stats.roi >= 0 ? "text-win-green" : "text-destructive"}`}>
+        <Card className="min-w-[70px] flex-1 max-w-[120px] sm:max-w-none">
+          <CardHeader className="pb-1 px-1.5 sm:pb-2 sm:px-6">
+            <CardDescription className="text-[9px] sm:text-xs text-center" style={{ fontSize: 'clamp(0.5625rem, 2vw, 0.75rem)' }}>ROI</CardDescription>
+            <CardTitle className={`text-sm sm:text-xl text-center ${stats.roi >= 0 ? "text-win-green" : "text-destructive"}`} style={{ fontSize: 'clamp(0.75rem, 3.5vw, 1.5rem)' }}>
               {stats.roi >= 0 ? "+" : ""}
               {stats.roi.toFixed(1)}%
             </CardTitle>

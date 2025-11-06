@@ -95,6 +95,25 @@ export function getBorderColorClass(result: string): string {
 }
 
 /**
+ * Get badge color class based on result
+ * Returns CSS class matching the border glow colors
+ */
+export function getBadgeColorClass(result: string): string {
+  switch (result) {
+    case "pending":
+      return "badge-pending";
+    case "win":
+      return "badge-win";
+    case "loss":
+      return "badge-loss";
+    case "void":
+      return "badge-void";
+    default:
+      return "badge-void";
+  }
+}
+
+/**
  * Convert decimal odds to American odds format
  */
 export function decimalToAmerican(odds: number): string {
@@ -132,8 +151,12 @@ export function americanToDecimal(american: string | number): number {
 
 /**
  * Format odds based on selected format preference
+ * Returns "Void" if result is "void"
  */
-export function formatOdds(odds: number, format: "decimal" | "american"): string {
+export function formatOdds(odds: number, format: "decimal" | "american", result?: "pending" | "win" | "loss" | "void"): string {
+  if (result === "void") {
+    return "Void";
+  }
   if (format === "american") {
     return decimalToAmerican(odds);
   }

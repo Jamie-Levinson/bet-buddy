@@ -22,7 +22,7 @@ export function LegCard({ leg }: LegCardProps) {
           </div>
         </div>
         <div className="text-right ml-4">
-          <div className="font-semibold">{formatOdds(leg.odds, format)}</div>
+          <div className="font-semibold">{formatOdds(leg.odds, format, leg.result)}</div>
         </div>
       </div>
     </div>

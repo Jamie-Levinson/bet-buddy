@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Pencil } from "lucide-react";
 import { LegCard } from "@/components/LegCard";
-import { getBetTypeLabel, getBorderColorClass, formatOdds } from "@/lib/bet-helpers";
+import { getBetTypeLabel, getBorderColorClass, getBadgeColorClass, formatOdds } from "@/lib/bet-helpers";
 import { useOddsFormat } from "@/lib/odds-format-context";
 import type { SerializedBetWithLegs } from "@/lib/serialize";
 
@@ -16,6 +17,7 @@ export function BetCard({ bet }: BetCardProps) {
   const borderColorClass = getBorderColorClass(bet.result);
   const betTypeLabel = getBetTypeLabel(bet.betType, bet.legs.length);
   const { format } = useOddsFormat();
+  const badgeColorClass = getBadgeColorClass(bet.result);
 
   // Calculate profit/returned amount
   const getReturnedText = () => {
@@ -33,11 +35,21 @@ export function BetCard({ bet }: BetCardProps) {
 
   return (
     <div className={`glass-card rounded-xl ${borderColorClass} p-4 sm:p-5 space-y-3 sm:space-y-4 transition-all hover:shadow-xl hover:shadow-black/30`}>
-      {/* First Row: Title + Odds | Edit Button */}
+      {/* First Row: Title + Odds + Badges | Edit Button */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="font-semibold text-base">{betTypeLabel}</div>
-          <div className="text-sm text-muted-foreground">{formatOdds(bet.odds, format)}</div>
+          <div className="text-sm text-muted-foreground">{formatOdds(bet.odds, format, bet.result)}</div>
+          {bet.boostPercentage && bet.boostPercentage > 0 && (
+            <Badge variant="secondary" className={`text-xs ${badgeColorClass}`}>
+              {bet.boostPercentage}% boost
+            </Badge>
+          )}
+          {bet.isNoSweat && (
+            <Badge variant="secondary" className={`text-xs ${badgeColorClass}`}>
+              No Sweat
+            </Badge>
+          )}
         </div>
         <Link href={`/bets/${bet.id}`}>
           <Button variant="ghost" size="sm" className="h-8 px-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-primary hover:text-primary/80">

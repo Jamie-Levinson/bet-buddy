@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { betFormSchema, type BetFormData } from "@/lib/validations/bet";
-import { calculateBetOdds, americanToDecimal, formatOdds } from "@/lib/bet-helpers";
+import { calculateBetOdds, calculateBetResult, americanToDecimal, formatOdds } from "@/lib/bet-helpers";
 import { useOddsFormat } from "@/lib/odds-format-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,6 +107,11 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
   const calculatedOdds = useMemo(() => {
     if (!legs || legs.length === 0) return 0;
     return calculateBetOdds(legs);
+  }, [legs]);
+
+  const calculatedBetResult = useMemo(() => {
+    if (!legs || legs.length === 0) return "pending" as const;
+    return calculateBetResult(legs);
   }, [legs]);
 
   const calculatedPayout = useMemo(() => {
@@ -349,16 +354,18 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                 </div>
               )}
 
-              {calculatedOdds > 1 && (
+                    {(calculatedOdds > 1 || calculatedBetResult === "void") && (
                 <div className="glass-card space-y-2 rounded-lg p-4">
                   <Label className="text-sm text-muted-foreground">Total Odds</Label>
                   <div className="text-3xl font-bold">
-                    {formatOdds(calculatedOdds, format)}
+                    {formatOdds(calculatedOdds, format, calculatedBetResult)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {legs.filter((leg) => leg.odds && leg.odds !== 0).length > 1 
-                      ? `Product of ${legs.filter((leg) => leg.odds && leg.odds !== 0).length} legs` 
-                      : "Single leg odds"}
+                    {calculatedBetResult === "void" 
+                      ? "All legs are void"
+                      : legs.filter((leg) => leg.odds && leg.odds !== 0).length > 1 
+                        ? `Product of ${legs.filter((leg) => leg.odds && leg.odds !== 0).length} legs` 
+                        : "Single leg odds"}
                   </p>
                 </div>
               )}
