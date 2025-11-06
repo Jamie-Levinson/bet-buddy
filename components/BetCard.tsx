@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 import { LegCard } from "@/components/LegCard";
-import { getBetTypeLabel, getBorderColorClass } from "@/lib/bet-helpers";
+import { getBetTypeLabel, getBorderColorClass, formatOdds } from "@/lib/bet-helpers";
+import { useOddsFormat } from "@/lib/odds-format-context";
 import type { SerializedBetWithLegs } from "@/lib/serialize";
 
 interface BetCardProps {
@@ -14,6 +15,7 @@ interface BetCardProps {
 export function BetCard({ bet }: BetCardProps) {
   const borderColorClass = getBorderColorClass(bet.result);
   const betTypeLabel = getBetTypeLabel(bet.betType, bet.legs.length);
+  const { format } = useOddsFormat();
 
   // Calculate profit/returned amount
   const getReturnedText = () => {
@@ -35,7 +37,7 @@ export function BetCard({ bet }: BetCardProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="font-semibold text-base">{betTypeLabel}</div>
-          <div className="text-sm text-muted-foreground">{bet.odds.toFixed(2)}</div>
+          <div className="text-sm text-muted-foreground">{formatOdds(bet.odds, format)}</div>
         </div>
         <Link href={`/bets/${bet.id}`}>
           <Button variant="ghost" size="sm" className="h-8 px-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-primary hover:text-primary/80">

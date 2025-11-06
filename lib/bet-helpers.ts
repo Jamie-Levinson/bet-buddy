@@ -94,3 +94,49 @@ export function getBorderColorClass(result: string): string {
   }
 }
 
+/**
+ * Convert decimal odds to American odds format
+ */
+export function decimalToAmerican(odds: number): string {
+  if (odds >= 2.00) {
+    return `+${Math.round((odds - 1) * 100)}`;
+  } else {
+    return `${Math.round(-100 / (odds - 1))}`;
+  }
+}
+
+/**
+ * Convert American odds to decimal odds
+ * Accepts string (+150, -200) or number (150, -200)
+ */
+export function americanToDecimal(american: string | number): number {
+  let americanNum: number;
+  
+  if (typeof american === "string") {
+    // Remove + sign and parse
+    americanNum = parseFloat(american.replace(/\+/, ""));
+  } else {
+    americanNum = american;
+  }
+  
+  if (isNaN(americanNum)) {
+    throw new Error("Invalid American odds format");
+  }
+  
+  if (americanNum > 0) {
+    return americanNum / 100 + 1;
+  } else {
+    return 100 / Math.abs(americanNum) + 1;
+  }
+}
+
+/**
+ * Format odds based on selected format preference
+ */
+export function formatOdds(odds: number, format: "decimal" | "american"): string {
+  if (format === "american") {
+    return decimalToAmerican(odds);
+  }
+  return odds.toFixed(2);
+}
+

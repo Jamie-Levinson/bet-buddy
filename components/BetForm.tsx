@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { betFormSchema, type BetFormData } from "@/lib/validations/bet";
-import { calculateBetOdds } from "@/lib/bet-helpers";
+import { calculateBetOdds, americanToDecimal, formatOdds } from "@/lib/bet-helpers";
+import { useOddsFormat } from "@/lib/odds-format-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,38 @@ interface BetFormProps {
 
 export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { format } = useOddsFormat();
+  const [oddsInputs, setOddsInputs] = useState<Record<number, string>>({});
+
+  // Auto-detect odds format and conditionally validate based on format
+  const parseOddsInput = (value: string): number => {
+    if (!value || value.trim() === "") return 0;
+    
+    const trimmed = value.trim();
+    
+    if (trimmed.startsWith("+") || trimmed.startsWith("-")) {
+      const numberPart = trimmed.slice(1);
+      
+      if (numberPart.length < 3 || !/^\d+$/.test(numberPart)) {
+        return 0; // Invalid - return 0 so it's filtered out
+      }
+      
+      try {
+        return americanToDecimal(trimmed);
+      } catch {
+        return 0;
+      }
+    }
+    
+    const decimal = parseFloat(trimmed);
+    return isNaN(decimal) || decimal <= 0 ? 0 : decimal;
+  };
+
+  const handleOddsChange = (index: number, value: string) => {
+    setOddsInputs((prev) => ({ ...prev, [index]: value }));
+    const decimalValue = parseOddsInput(value);
+    setValue(`legs.${index}.odds`, decimalValue, { shouldValidate: true });
+  };
 
   const {
     register,
@@ -50,7 +83,19 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
   const boostPercentage = useWatch({ control, name: "boostPercentage" });
   const isNoSweat = useWatch({ control, name: "isNoSweat" });
 
-  // Calculate bet type from legs
+  // Initialize odds inputs from defaultValues
+  useEffect(() => {
+    if (defaultValues?.legs) {
+      const initialInputs: Record<number, string> = {};
+      defaultValues.legs.forEach((leg, index) => {
+        if (leg.odds) {
+          initialInputs[index] = leg.odds.toString();
+        }
+      });
+      setOddsInputs(initialInputs);
+    }
+  }, [defaultValues]);
+
   const calculatedBetType = useMemo(() => {
     if (!legs || legs.length === 0) return null;
     if (legs.length === 1) return "straight";
@@ -64,7 +109,6 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
     return calculateBetOdds(legs);
   }, [legs]);
 
-  // Calculate payout
   const calculatedPayout = useMemo(() => {
     if (!wager || calculatedOdds === 0) return 0;
     const basePayout = wager * calculatedOdds;
@@ -116,7 +160,20 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
               <div className="flex items-center justify-between">
                 <h3 className="font-medium">Leg {index + 1}</h3>
                 {fields.length > 1 && (
-                  <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)}>
+                  <Button 
+                    type="button" 
+                    variant="destructive" 
+                    size="sm" 
+                    //clean up input state for removed index
+                    onClick={() => {
+                      remove(index);
+                      setOddsInputs((prev) => {
+                        const newInputs = { ...prev };
+                        delete newInputs[index];
+                        return newInputs;
+                      });
+                    }}
+                  >
                     Remove
                   </Button>
                 )}
@@ -159,14 +216,16 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                   </Label>
                   <Input
                     id={`legs.${index}.odds`}
-                    type="number"
-                    step="0.01"
-                    min="1.01"
-                    placeholder="e.g., 1.85"
+                    type="text"
+                    placeholder="e.g., 1.85 or +150"
+                    value={oddsInputs[index] ?? (legs?.[index]?.odds ? legs[index].odds.toString() : "")}
+                    onChange={(e) => handleOddsChange(index, e.target.value)}
                     className={errors.legs?.[index]?.odds ? "border-destructive" : ""}
                     onWheel={(e) => e.currentTarget.blur()}
-                    {...register(`legs.${index}.odds`)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Enter decimal (e.g., 1.85) or American (e.g., +150, -200)
+                  </p>
                   {errors.legs?.[index]?.odds && (
                     <p className="text-sm text-destructive">{errors.legs[index]?.odds?.message}</p>
                   )}
@@ -204,7 +263,14 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => append({ description: "", eventName: "", odds: 0, result: "pending" })}
+            onClick={() => {
+              append({ description: "", eventName: "", odds: 0, result: "pending" });
+              setOddsInputs((prev) => {
+                const newInputs = { ...prev };
+                newInputs[fields.length] = "";
+                return newInputs;
+              });
+            }}
             className="w-full"
           >
             Add Leg
@@ -283,11 +349,11 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                 </div>
               )}
 
-              {calculatedOdds > 0 && (
+              {calculatedOdds > 1 && (
                 <div className="glass-card space-y-2 rounded-lg p-4">
                   <Label className="text-sm text-muted-foreground">Total Odds</Label>
                   <div className="text-3xl font-bold">
-                    {calculatedOdds.toFixed(2)}
+                    {formatOdds(calculatedOdds, format)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {legs.filter((leg) => leg.odds && leg.odds !== 0).length > 1 

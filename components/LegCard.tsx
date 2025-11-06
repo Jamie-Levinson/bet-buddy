@@ -1,6 +1,7 @@
 "use client";
 
-import { formatEventDate, getBorderColorClass } from "@/lib/bet-helpers";
+import { formatEventDate, getBorderColorClass, formatOdds } from "@/lib/bet-helpers";
+import { useOddsFormat } from "@/lib/odds-format-context";
 import type { SerializedBetWithLegs } from "@/lib/serialize";
 
 interface LegCardProps {
@@ -9,6 +10,7 @@ interface LegCardProps {
 
 export function LegCard({ leg }: LegCardProps) {
   const borderColorClass = getBorderColorClass(leg.result);
+  const { format } = useOddsFormat();
 
   return (
     <div className={`rounded-lg border-2 ${borderColorClass} bg-card p-4`}>
@@ -20,7 +22,7 @@ export function LegCard({ leg }: LegCardProps) {
           </div>
         </div>
         <div className="text-right ml-4">
-          <div className="font-semibold">{leg.odds.toFixed(2)}</div>
+          <div className="font-semibold">{formatOdds(leg.odds, format)}</div>
         </div>
       </div>
     </div>

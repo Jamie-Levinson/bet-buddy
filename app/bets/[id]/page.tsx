@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteBetButton } from "@/components/DeleteBetButton";
 import { UpdateBetForm } from "@/components/UpdateBetForm";
 import { type BetFormData } from "@/lib/validations/bet";
+import { OddsFormatSelector } from "@/components/OddsFormatSelector";
 
 interface BetDetailPageProps {
   params: Promise<{
@@ -68,6 +69,7 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
           </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <OddsFormatSelector />
           <Link href="/bets" className="w-full sm:w-auto">
             <Button variant="outline" className="w-full sm:w-auto min-h-[44px]">Back to Bets</Button>
           </Link>

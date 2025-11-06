@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getBets } from "@/actions/bet-actions";
 import { Analytics } from "@/components/Analytics";
+import { OddsFormatSelector } from "@/components/OddsFormatSelector";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -22,6 +23,7 @@ export default async function DashboardPage() {
           <p className="mt-2 text-sm sm:text-base text-muted-foreground">Welcome, {user.email}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <OddsFormatSelector />
           <Link href="/bets" className="w-full sm:w-auto">
             <Button variant="outline" className="w-full sm:w-auto min-h-[44px]">View All Bets</Button>
           </Link>
