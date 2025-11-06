@@ -35,7 +35,6 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
   const defaultValues: Partial<BetFormData> = {
     wager: bet.wager,
     date: format(new Date(bet.date), "yyyy-MM-dd"),
-    result: bet.result || "pending",
     isBonusBet: bet.isBonusBet,
     boostPercentage: bet.boostPercentage ?? undefined,
     isNoSweat: bet.isNoSweat,
@@ -43,6 +42,7 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
       description: leg.description,
       eventName: leg.eventName,
       odds: leg.odds,
+      result: leg.result || "pending",
     })),
   };
 

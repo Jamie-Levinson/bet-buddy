@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { betFormSchema, type BetFormData } from "@/lib/validations/bet";
+import { calculateBetOdds } from "@/lib/bet-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,10 +32,9 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
   } = useForm<BetFormData>({
     resolver: zodResolver(betFormSchema) as any,
     defaultValues: {
-      result: "pending",
       isBonusBet: false,
       isNoSweat: false,
-      legs: [{ description: "", eventName: "", odds: 0 }],
+      legs: [{ description: "", eventName: "", odds: 0, result: "pending" }],
       date: new Date().toISOString().split("T")[0],
       ...defaultValues,
     },
@@ -61,13 +61,10 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
     return "parlay";
   }, [legs]);
 
-  // Calculate total odds from legs
+  // Calculate total odds from legs (excluding void legs)
   const calculatedOdds = useMemo(() => {
     if (!legs || legs.length === 0) return 0;
-    return legs.reduce((acc, leg) => {
-      const odds = leg.odds || 0;
-      return acc * (odds > 0 ? odds : 1);
-    }, 1);
+    return calculateBetOdds(legs);
   }, [legs]);
 
   // Calculate payout
@@ -177,13 +174,39 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                   )}
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`legs.${index}.result`}>
+                  Leg Result
+                </Label>
+                <Select
+                  value={watch(`legs.${index}.result`) || "pending"}
+                  onValueChange={(value) => setValue(`legs.${index}.result`, value as "pending" | "win" | "loss" | "void")}
+                >
+                  <SelectTrigger id={`legs.${index}.result`} className={errors.legs?.[index]?.result ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Select result" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Unsettled</SelectItem>
+                    <SelectItem value="win">Win</SelectItem>
+                    <SelectItem value="loss">Loss</SelectItem>
+                    <SelectItem value="void">Void</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.legs?.[index]?.result && (
+                  <p className="text-sm text-destructive">{errors.legs[index]?.result?.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  The bet result will be calculated automatically based on leg results.
+                </p>
+              </div>
             </div>
           ))}
 
           <Button
             type="button"
             variant="outline"
-            onClick={() => append({ description: "", eventName: "", odds: 0 })}
+            onClick={() => append({ description: "", eventName: "", odds: 0, result: "pending" })}
             className="w-full"
           >
             Add Leg
@@ -337,37 +360,6 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
             <Label htmlFor="isNoSweat" className="cursor-pointer">
               No Sweat (refund as bonus bets if the bet loses)
             </Label>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Result Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Result</CardTitle>
-          <CardDescription>Set the result of your bet. Leave as "Unsettled" if the bet hasn't completed yet.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <Label htmlFor="result">Bet Result</Label>
-            <Select
-              value={watch("result") || "pending"}
-              onValueChange={(value) => setValue("result", value as BetFormData["result"])}
-            >
-              <SelectTrigger id="result" className={errors.result ? "border-destructive" : ""}>
-                <SelectValue placeholder="Select result" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Unsettled</SelectItem>
-                <SelectItem value="win">Win</SelectItem>
-                <SelectItem value="loss">Loss</SelectItem>
-                <SelectItem value="void">Void</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.result && <p className="text-sm text-destructive">{errors.result.message}</p>}
-            <p className="text-xs text-muted-foreground">
-              Select "Unsettled" if the bet hasn't completed yet. You can update this later.
-            </p>
           </div>
         </CardContent>
       </Card>

@@ -1,16 +1,17 @@
 import { z } from "zod";
+import { calculateBetOdds } from "@/lib/bet-helpers";
 
 export const legSchema = z.object({
   description: z.string().min(1, "Description is required"),
   eventName: z.string().min(1, "Event name is required"),
   odds: z.coerce.number().positive("Odds must be positive"),
+  result: z.enum(["pending", "win", "loss", "void"] as const).default("pending"),
 });
 
 export const betFormSchema = z.object({
   betType: z.enum(["straight", "same_game_parlay", "parlay"] as const).optional(),
   wager: z.coerce.number().positive("Wager must be positive"),
   date: z.string().min(1, "Date is required"),
-  result: z.enum(["pending", "win", "loss", "void"] as const).default("pending"),
   legs: z.array(legSchema).min(1, "At least one leg is required"),
   isBonusBet: z.boolean().default(false),
   boostPercentage: z.preprocess(
@@ -32,8 +33,7 @@ export const betFormSchema = z.object({
     }
   }
 
-  // Calculate total odds by multiplying all leg odds
-  const totalOdds = data.legs.reduce((acc, leg) => acc * leg.odds, 1);
+  const totalOdds = calculateBetOdds(data.legs);
 
   // Calculate payout based on modifiers
   let payout: number;

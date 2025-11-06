@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { betFormSchema, type BetFormData } from "@/lib/validations/bet";
 import { revalidatePath } from "next/cache";
 import { serializeBet, serializeBets, type SerializedBetWithLegs } from "@/lib/serialize";
+import { calculateBetResult, calculateBetOdds } from "@/lib/bet-helpers";
 
 export async function createBet(data: BetFormData) {
   const user = await getCurrentUser();
@@ -14,14 +15,17 @@ export async function createBet(data: BetFormData) {
 
   const validated = betFormSchema.parse(data);
 
+  const betResult = calculateBetResult(validated.legs);
+  const calculatedOdds = calculateBetOdds(validated.legs);
+
   const bet = await prisma.bet.create({
     data: {
       userId: user.id,
       wager: validated.wager,
       payout: validated.payout,
-      odds: validated.odds,
+      odds: calculatedOdds,
       date: new Date(validated.date),
-      result: validated.result,
+      result: betResult,
       betType: validated.betType!,
       isBonusBet: validated.isBonusBet,
       boostPercentage: validated.boostPercentage ?? null,
@@ -31,7 +35,8 @@ export async function createBet(data: BetFormData) {
           description: leg.description,
           eventName: leg.eventName,
           odds: leg.odds,
-          result: "pending" as const,
+          result: leg.result,
+          eventDate: new Date(validated.date),
         })),
       },
     },
@@ -61,9 +66,10 @@ export async function getBets(page = 1, pageSize = 20) {
       include: {
         legs: true,
       },
-      orderBy: {
-        date: "desc",
-      },
+      orderBy: [
+        { date: "desc" },
+        { createdAt: "desc" },
+      ],
       skip,
       take: pageSize,
     }),
@@ -118,6 +124,9 @@ export async function updateBet(id: string, data: BetFormData) {
 
   const validated = betFormSchema.parse(data);
 
+  const betResult = calculateBetResult(validated.legs);
+  const calculatedOdds = calculateBetOdds(validated.legs);
+
   // Verify ownership
   const existingBet = await prisma.bet.findFirst({
     where: {
@@ -137,9 +146,9 @@ export async function updateBet(id: string, data: BetFormData) {
     data: {
       wager: validated.wager,
       payout: validated.payout,
-      odds: validated.odds,
+      odds: calculatedOdds,
       date: new Date(validated.date),
-      result: validated.result,
+      result: betResult,
       betType: validated.betType!,
       isBonusBet: validated.isBonusBet,
       boostPercentage: validated.boostPercentage ?? null,
@@ -150,7 +159,9 @@ export async function updateBet(id: string, data: BetFormData) {
           description: leg.description,
           eventName: leg.eventName,
           odds: leg.odds,
-          result: "pending" as const,
+          result: leg.result,
+          // TODO: Replace with actual event date from ESPN API when integrated
+          eventDate: new Date(validated.date),
         })),
       },
     },

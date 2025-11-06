@@ -19,6 +19,7 @@ export type SerializedBetWithLegs = {
     betId: string;
     description: string;
     eventName: string;
+    eventDate: string;
     odds: number;
     result: "pending" | "win" | "loss" | "void";
     createdAt: string;
@@ -26,41 +27,39 @@ export type SerializedBetWithLegs = {
 };
 
 // Convert any Prisma bet object to serialized format
-// Prisma Decimal objects need .toNumber() method
 export function serializeBet(bet: any): SerializedBetWithLegs {
-  // Helper to convert Decimal to number (only converts if needed)
+
   const toNumber = (value: any): number => {
     // If it's a Decimal object (has toNumber method), use it
     if (value?.toNumber && typeof value.toNumber === 'function') {
       return value.toNumber();
     }
-    // Already a number, return as-is
     return Number(value);
   };
 
-  // Create a completely new plain object - only convert what needs converting
   const serialized: SerializedBetWithLegs = {
     id: bet.id,
     userId: bet.userId,
-    wager: toNumber(bet.wager),      // Decimal → number
-    payout: toNumber(bet.payout),    // Decimal → number
-    odds: toNumber(bet.odds),        // Decimal → number
-    date: bet.date.toISOString(),    // Date → string
+    wager: toNumber(bet.wager),      
+    payout: toNumber(bet.payout),    
+    odds: toNumber(bet.odds),        
+    date: bet.date.toISOString(),    
     result: bet.result,
     betType: bet.betType,
     isBonusBet: bet.isBonusBet,
     boostPercentage: bet.boostPercentage,
     isNoSweat: bet.isNoSweat,
-    createdAt: bet.createdAt.toISOString(),  // Date → string
-    updatedAt: bet.updatedAt.toISOString(),  // Date → string
+    createdAt: bet.createdAt.toISOString(),  
+    updatedAt: bet.updatedAt.toISOString(),  
     legs: bet.legs.map((leg: any) => ({
       id: leg.id,
       betId: leg.betId,
       description: leg.description,
       eventName: leg.eventName,
-      odds: toNumber(leg.odds),              // Decimal → number
+      eventDate: leg.eventDate.toISOString(),
+      odds: toNumber(leg.odds),              
       result: leg.result,
-      createdAt: leg.createdAt.toISOString(), // Date → string
+      createdAt: leg.createdAt.toISOString(), 
     })),
   };
   

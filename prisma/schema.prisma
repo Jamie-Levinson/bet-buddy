@@ -53,6 +53,7 @@ model Leg {
   betId       String    @map("bet_id")
   description String    @db.Text
   eventName   String    @map("event_name")
+  eventDate   DateTime  @map("event_date")
   odds        Decimal   @db.Decimal(10, 2)
   result      BetResult
   createdAt   DateTime  @default(now()) @map("created_at")
