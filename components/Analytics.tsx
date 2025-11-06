@@ -87,7 +87,7 @@ export function Analytics({ bets }: AnalyticsProps) {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Profit/Loss</CardDescription>
-            <CardTitle className={`text-2xl ${stats.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+            <CardTitle className={`text-2xl ${stats.totalProfit >= 0 ? "text-win-green" : "text-destructive"}`}>
               ${stats.totalProfit >= 0 ? "+" : ""}
               {stats.totalProfit.toFixed(2)}
             </CardTitle>
@@ -104,7 +104,7 @@ export function Analytics({ bets }: AnalyticsProps) {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>ROI</CardDescription>
-            <CardTitle className={`text-2xl ${stats.roi >= 0 ? "text-green-600" : "text-red-600"}`}>
+            <CardTitle className={`text-2xl ${stats.roi >= 0 ? "text-win-green" : "text-destructive"}`}>
               {stats.roi >= 0 ? "+" : ""}
               {stats.roi.toFixed(1)}%
             </CardTitle>
@@ -162,19 +162,19 @@ export function Analytics({ bets }: AnalyticsProps) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Unsettled</p>
-              <p className="text-2xl font-bold text-yellow-600">
+              <p className="text-2xl font-bold text-yellow-500">
                 {stats.pendingBets}
               </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Wins</p>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-2xl font-bold text-win-green">
                 {bets.filter((b) => b.result === "win").length}
               </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Losses</p>
-              <p className="text-2xl font-bold text-red-600">
+              <p className="text-2xl font-bold text-destructive">
                 {bets.filter((b) => b.result === "loss").length}
               </p>
             </div>
