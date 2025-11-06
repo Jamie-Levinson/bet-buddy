@@ -22,13 +22,13 @@ export default async function DashboardPage() {
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">Dashboard</h1>
           <p className="mt-2 text-sm sm:text-base text-muted-foreground">Welcome, {user.email}</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+        <div className="flex flex-row flex-nowrap gap-2">
           <OddsFormatSelector />
-          <Link href="/bets" className="w-full sm:w-auto">
-            <Button variant="outline" className="w-full sm:w-auto min-h-[44px]">View All Bets</Button>
+          <Link href="/bets">
+            <Button variant="outline" className="min-h-[44px] whitespace-nowrap">View All Bets</Button>
           </Link>
-          <Link href="/bets/new" className="w-full sm:w-auto">
-            <Button className="w-full sm:w-auto min-h-[44px]">New Bet</Button>
+          <Link href="/bets/new">
+            <Button className="min-h-[44px] whitespace-nowrap">New Bet</Button>
           </Link>
         </div>
       </div>

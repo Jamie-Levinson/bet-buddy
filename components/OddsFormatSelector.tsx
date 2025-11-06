@@ -14,7 +14,7 @@ export function OddsFormatSelector() {
 
   return (
     <Select value={format} onValueChange={(value) => setFormat(value as "decimal" | "american")}>
-      <SelectTrigger className="w-full sm:w-auto min-h-[44px]">
+      <SelectTrigger className="min-h-[44px] whitespace-nowrap">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

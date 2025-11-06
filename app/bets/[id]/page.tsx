@@ -68,10 +68,10 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
             </Badge>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+        <div className="flex flex-row flex-nowrap gap-2">
           <OddsFormatSelector />
-          <Link href="/bets" className="w-full sm:w-auto">
-            <Button variant="outline" className="w-full sm:w-auto min-h-[44px]">Back to Bets</Button>
+          <Link href="/bets">
+            <Button variant="outline" className="min-h-[44px] whitespace-nowrap">Back to Bets</Button>
           </Link>
           <DeleteBetButton betId={id} />
         </div>

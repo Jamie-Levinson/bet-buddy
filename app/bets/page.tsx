@@ -27,10 +27,10 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 pb-24 sm:pb-32">
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">All Bets</h1>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+        <div className="flex flex-row flex-nowrap gap-2">
           <OddsFormatSelector />
-          <Link href="/bets/new" className="w-full sm:w-auto">
-            <Button className="w-full sm:w-auto min-h-[44px]">New Bet</Button>
+          <Link href="/bets/new">
+            <Button className="min-h-[44px] whitespace-nowrap">New Bet</Button>
           </Link>
         </div>
       </div>
