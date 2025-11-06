@@ -77,20 +77,21 @@ export function formatEventDate(dateString: string): string {
 }
 
 /**
- * Get border color class based on result
+ * Get border color class and glow effect based on result
+ * Returns glassmorphism classes with colored glows
  */
 export function getBorderColorClass(result: string): string {
   switch (result) {
     case "pending":
-      return "border-yellow-500";
+      return "glow-pending";
     case "win":
-      return "border-green-500";
+      return "glow-win";
     case "loss":
-      return "border-red-500";
+      return "glow-loss";
     case "void":
-      return "border-gray-500";
+      return "glow-void";
     default:
-      return "border-gray-500";
+      return "glow-void";
   }
 }
 

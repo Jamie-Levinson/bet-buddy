@@ -54,35 +54,35 @@ export function BetList({ bets, total, page, totalPages }: BetListProps) {
         <CardDescription>Total: {total} bets</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="mb-6 flex flex-wrap gap-6">
-          <div className="flex items-center space-x-2">
+        <div className="mb-6 flex flex-wrap gap-4 sm:gap-6">
+          <div className="flex items-center space-x-2 min-h-[44px]">
             <Checkbox
               id="showOpen"
               checked={showOpen}
               onCheckedChange={(checked) => setShowOpen(checked === true)}
             />
-            <Label htmlFor="showOpen" className="cursor-pointer font-normal">
+            <Label htmlFor="showOpen" className="cursor-pointer font-normal text-sm sm:text-base">
               Open
             </Label>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 min-h-[44px]">
             <Checkbox
               id="showSettled"
               checked={showSettled}
               onCheckedChange={(checked) => setShowSettled(checked === true)}
             />
-            <Label htmlFor="showSettled" className="cursor-pointer font-normal">
+            <Label htmlFor="showSettled" className="cursor-pointer font-normal text-sm sm:text-base">
               Settled
             </Label>
           </div>
         </div>
 
         {filteredBets.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">
-            No bets found
+          <div className="text-center text-muted-foreground py-12 sm:py-16">
+            <p className="text-base sm:text-lg">No bets found</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 sm:space-y-5">
             {filteredBets.map((bet) => (
               <BetCard key={bet.id} bet={bet} />
             ))}
@@ -91,21 +91,21 @@ export function BetList({ bets, total, page, totalPages }: BetListProps) {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-between">
+          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
               Page {page} of {totalPages}
             </p>
             <div className="flex gap-2">
               {page > 1 && (
                 <Link href={`/bets?page=${page - 1}`}>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="min-h-[44px] min-w-[100px]">
                     Previous
                   </Button>
                 </Link>
               )}
               {page < totalPages && (
                 <Link href={`/bets?page=${page + 1}`}>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="min-h-[44px] min-w-[100px]">
                     Next
                   </Button>
                 </Link>

@@ -47,7 +47,9 @@ export async function createBet(data: BetFormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/bets");
-  return bet;
+  
+  // Serialize before returning
+  return serializeBet(bet);
 }
 
 export async function getBets(page = 1, pageSize = 20) {

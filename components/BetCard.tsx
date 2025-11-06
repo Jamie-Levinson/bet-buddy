@@ -18,9 +18,9 @@ export function BetCard({ bet }: BetCardProps) {
   // Calculate profit/returned amount
   const getReturnedText = () => {
     if (bet.result === "win") {
-      return { label: "Returned:", amount: bet.payout.toFixed(2), color: "text-green-600 dark:text-green-400" };
+      return { label: "Returned:", amount: bet.payout.toFixed(2), color: "text-win-green" };
     } else if (bet.result === "loss") {
-      return { label: "Returned:", amount: "0", color: "text-red-600 dark:text-red-400" };
+      return { label: "Returned:", amount: "0", color: "text-destructive" };
     } else {
       // pending or void
       return { label: "To Return:", amount: bet.payout.toFixed(2), color: "text-foreground" };
@@ -30,7 +30,7 @@ export function BetCard({ bet }: BetCardProps) {
   const returnedInfo = getReturnedText();
 
   return (
-    <div className={`rounded-lg border-2 ${borderColorClass} bg-card p-4 space-y-3`}>
+    <div className={`glass-card rounded-xl ${borderColorClass} p-4 sm:p-5 space-y-3 sm:space-y-4 transition-all hover:shadow-xl hover:shadow-black/30`}>
       {/* First Row: Title + Odds | Edit Button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -38,9 +38,9 @@ export function BetCard({ bet }: BetCardProps) {
           <div className="text-sm text-muted-foreground">{bet.odds.toFixed(2)}</div>
         </div>
         <Link href={`/bets/${bet.id}`}>
-          <Button variant="ghost" size="sm" className="h-8 px-2">
+          <Button variant="ghost" size="sm" className="h-8 px-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-primary hover:text-primary/80">
             <Pencil className="h-4 w-4 mr-1" />
-            <span className="text-xs">Edit</span>
+            <span className="text-xs hidden sm:inline">Edit</span>
           </Button>
         </Link>
       </div>

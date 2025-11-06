@@ -115,7 +115,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           {fields.map((field, index) => (
-            <div key={field.id} className="space-y-4 rounded-lg border p-4 bg-muted/50">
+            <div key={field.id} className="glass-card space-y-4 rounded-lg p-4 sm:p-5">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium">Leg {index + 1}</h3>
                 {fields.length > 1 && (
@@ -256,7 +256,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
 
       {/* Calculated Values Display */}
       {(calculatedBetType || calculatedOdds > 0 || (wager && calculatedPayout > 0)) && (
-        <Card className="border-primary/20 bg-primary/5">
+        <Card className="glow-accent">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span>Calculated Values</span>
@@ -265,9 +265,9 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
             <CardDescription>These values update automatically as you enter your bet details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               {calculatedBetType && (
-                <div className="space-y-2 rounded-lg border bg-card p-4">
+                <div className="glass-card space-y-2 rounded-lg p-4">
                   <Label className="text-sm text-muted-foreground">Bet Type</Label>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-base px-3 py-1.5 font-semibold">
@@ -285,7 +285,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
               )}
 
               {calculatedOdds > 0 && (
-                <div className="space-y-2 rounded-lg border bg-card p-4">
+                <div className="glass-card space-y-2 rounded-lg p-4">
                   <Label className="text-sm text-muted-foreground">Total Odds</Label>
                   <div className="text-3xl font-bold">
                     {calculatedOdds.toFixed(2)}
@@ -297,9 +297,9 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
               )}
 
               {wager && calculatedPayout > 0 && (
-                <div className="space-y-2 rounded-lg border bg-card p-4">
+                <div className="glass-card space-y-2 rounded-lg p-4">
                   <Label className="text-sm text-muted-foreground">Potential Payout</Label>
-                  <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                  <div className="text-3xl font-bold text-win-green">
                     ${calculatedPayout.toFixed(2)}
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -365,7 +365,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
       </Card>
 
       <div className="flex justify-end space-x-4">
-        <Button type="submit" disabled={isSubmitting} size="lg">
+        <Button type="submit" disabled={isSubmitting} size="lg" className="min-h-[44px] min-w-[120px]">
           {isSubmitting ? "Saving..." : "Save Bet"}
         </Button>
       </div>

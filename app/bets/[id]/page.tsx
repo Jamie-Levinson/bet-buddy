@@ -47,29 +47,29 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
   };
 
   return (
-    <div className="container mx-auto max-w-4xl p-4">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8 pb-24 sm:pb-32">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Edit Bet</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Edit Bet</h1>
           <div className="mt-2 flex items-center gap-2">
             <Badge
               className={
                 bet.result === "pending"
                   ? "bg-yellow-500"
                   : bet.result === "win"
-                    ? "bg-green-500"
+                    ? "bg-win-green"
                     : bet.result === "loss"
-                      ? "bg-red-500"
-                      : "bg-gray-500"
+                      ? "bg-destructive"
+                      : "bg-muted"
               }
             >
               {bet.result === "pending" ? "Unsettled" : bet.result.charAt(0).toUpperCase() + bet.result.slice(1)}
             </Badge>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Link href="/bets">
-            <Button variant="outline">Back to Bets</Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link href="/bets" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto min-h-[44px]">Back to Bets</Button>
           </Link>
           <DeleteBetButton betId={id} />
         </div>

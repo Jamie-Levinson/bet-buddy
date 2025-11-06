@@ -30,36 +30,49 @@ export type SerializedBetWithLegs = {
 export function serializeBet(bet: any): SerializedBetWithLegs {
 
   const toNumber = (value: any): number => {
+    // Handle null/undefined
+    if (value === null || value === undefined) {
+      return 0;
+    }
     // If it's a Decimal object (has toNumber method), use it
-    if (value?.toNumber && typeof value.toNumber === 'function') {
+    if (value && typeof value === 'object' && 'toNumber' in value && typeof value.toNumber === 'function') {
       return value.toNumber();
     }
-    return Number(value);
+    // If it's already a number, return it
+    if (typeof value === 'number') {
+      return value;
+    }
+    // Try to convert to number
+    const num = Number(value);
+    if (isNaN(num)) {
+      return 0;
+    }
+    return num;
   };
 
   const serialized: SerializedBetWithLegs = {
-    id: bet.id,
-    userId: bet.userId,
+    id: String(bet.id),
+    userId: String(bet.userId),
     wager: toNumber(bet.wager),      
     payout: toNumber(bet.payout),    
     odds: toNumber(bet.odds),        
-    date: bet.date.toISOString(),    
+    date: bet.date instanceof Date ? bet.date.toISOString() : String(bet.date),    
     result: bet.result,
     betType: bet.betType,
-    isBonusBet: bet.isBonusBet,
-    boostPercentage: bet.boostPercentage,
-    isNoSweat: bet.isNoSweat,
-    createdAt: bet.createdAt.toISOString(),  
-    updatedAt: bet.updatedAt.toISOString(),  
+    isBonusBet: Boolean(bet.isBonusBet),
+    boostPercentage: bet.boostPercentage !== null ? toNumber(bet.boostPercentage) : null,
+    isNoSweat: Boolean(bet.isNoSweat),
+    createdAt: bet.createdAt instanceof Date ? bet.createdAt.toISOString() : String(bet.createdAt),  
+    updatedAt: bet.updatedAt instanceof Date ? bet.updatedAt.toISOString() : String(bet.updatedAt),  
     legs: bet.legs.map((leg: any) => ({
-      id: leg.id,
-      betId: leg.betId,
-      description: leg.description,
-      eventName: leg.eventName,
-      eventDate: leg.eventDate.toISOString(),
+      id: String(leg.id),
+      betId: String(leg.betId),
+      description: String(leg.description),
+      eventName: String(leg.eventName),
+      eventDate: leg.eventDate instanceof Date ? leg.eventDate.toISOString() : String(leg.eventDate),
       odds: toNumber(leg.odds),              
       result: leg.result,
-      createdAt: leg.createdAt.toISOString(), 
+      createdAt: leg.createdAt instanceof Date ? leg.createdAt.toISOString() : String(leg.createdAt), 
     })),
   };
   
