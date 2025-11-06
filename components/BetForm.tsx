@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { betFormSchema, type BetFormData } from "@/lib/validations/bet";
 import { calculateBetOdds } from "@/lib/bet-helpers";
@@ -26,7 +26,6 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
     register,
     handleSubmit,
     control,
-    watch,
     setValue,
     formState: { errors },
   } = useForm<BetFormData>({
@@ -45,12 +44,11 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
     name: "legs",
   });
 
-  // Watch form values for real-time calculations
-  const legs = watch("legs");
-  const wager = watch("wager");
-  const isBonusBet = watch("isBonusBet");
-  const boostPercentage = watch("boostPercentage");
-  const isNoSweat = watch("isNoSweat");
+  const legs = useWatch({ control, name: "legs" });
+  const wager = useWatch({ control, name: "wager" });
+  const isBonusBet = useWatch({ control, name: "isBonusBet" });
+  const boostPercentage = useWatch({ control, name: "boostPercentage" });
+  const isNoSweat = useWatch({ control, name: "isNoSweat" });
 
   // Calculate bet type from legs
   const calculatedBetType = useMemo(() => {
@@ -61,7 +59,6 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
     return "parlay";
   }, [legs]);
 
-  // Calculate total odds from legs (excluding void legs)
   const calculatedOdds = useMemo(() => {
     if (!legs || legs.length === 0) return 0;
     return calculateBetOdds(legs);
@@ -167,6 +164,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                     min="1.01"
                     placeholder="e.g., 1.85"
                     className={errors.legs?.[index]?.odds ? "border-destructive" : ""}
+                    onWheel={(e) => e.currentTarget.blur()}
                     {...register(`legs.${index}.odds`)}
                   />
                   {errors.legs?.[index]?.odds && (
@@ -180,7 +178,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                   Leg Result
                 </Label>
                 <Select
-                  value={watch(`legs.${index}.result`) || "pending"}
+                  value={legs?.[index]?.result || "pending"}
                   onValueChange={(value) => setValue(`legs.${index}.result`, value as "pending" | "win" | "loss" | "void")}
                 >
                   <SelectTrigger id={`legs.${index}.result`} className={errors.legs?.[index]?.result ? "border-destructive" : ""}>
@@ -233,6 +231,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                 min="0.01"
                 placeholder="0.00"
                 className={errors.wager ? "border-destructive" : ""}
+                onWheel={(e) => e.currentTarget.blur()}
                 {...register("wager")}
               />
               {errors.wager && <p className="text-sm text-destructive">{errors.wager.message}</p>}
@@ -291,12 +290,14 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                     {calculatedOdds.toFixed(2)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {legs.length > 1 ? `Product of ${legs.length} legs` : "Single leg odds"}
+                    {legs.filter((leg) => leg.odds && leg.odds !== 0).length > 1 
+                      ? `Product of ${legs.filter((leg) => leg.odds && leg.odds !== 0).length} legs` 
+                      : "Single leg odds"}
                   </p>
                 </div>
               )}
 
-              {wager && calculatedPayout > 0 && (
+              {wager && Number(wager) > 0 && calculatedPayout > 0 && (
                 <div className="glass-card space-y-2 rounded-lg p-4">
                   <Label className="text-sm text-muted-foreground">Potential Payout</Label>
                   <div className="text-3xl font-bold text-win-green">

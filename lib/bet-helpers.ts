@@ -31,10 +31,9 @@ export function calculateBetResult(legs: Leg[]): BetResult {
 
 /**
  * Calculate bet odds by multiplying non-void leg odds
- * Returns 1.0 if all legs are void
  */
 export function calculateBetOdds(legs: Leg[]): number {
-  const nonVoidLegs = legs.filter((leg) => leg.result !== "void");
+  const nonVoidLegs = legs.filter((leg) => leg.result !== "void" && leg.odds !== 0);
 
   if (nonVoidLegs.length === 0) {
     return 1.0;

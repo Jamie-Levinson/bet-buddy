@@ -4,7 +4,7 @@ import { calculateBetOdds } from "@/lib/bet-helpers";
 export const legSchema = z.object({
   description: z.string().min(1, "Description is required"),
   eventName: z.string().min(1, "Event name is required"),
-  odds: z.coerce.number().positive("Odds must be positive"),
+  odds: z.coerce.number().min(1.01, "Odds must be greater than 1"),
   result: z.enum(["pending", "win", "loss", "void"] as const).default("pending"),
 });
 
