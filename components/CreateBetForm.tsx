@@ -10,7 +10,7 @@ export function CreateBetForm() {
 
   async function handleSubmit(data: BetFormData) {
     await createBet(data);
-    router.push("/dashboard");
+    router.push("/bets");
     router.refresh();
   }
 

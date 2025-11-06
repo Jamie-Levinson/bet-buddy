@@ -40,7 +40,7 @@ export function DeleteBetButton({ betId }: DeleteBetButtonProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive">Delete</Button>
+        <Button className="min-h-[44px] whitespace-nowrap" variant="destructive">Delete</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
