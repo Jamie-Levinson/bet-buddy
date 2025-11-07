@@ -26,6 +26,122 @@ enum BetType {
   parlay
 }
 
+enum SportEnum {
+  BASKETBALL
+  FOOTBALL
+  BASEBALL
+  HOCKEY
+}
+
+enum LeagueEnum {
+  NBA
+  NFL
+  MLB
+  NHL
+}
+
+enum Market {
+  // Universal / Core
+  MONEYLINE
+  SPREAD
+  TOTAL_POINTS
+  TEAM_TOTAL_POINTS
+  TEAM_FIRST_HALF_POINTS
+  TEAM_FIRST_QUARTER_POINTS
+  TEAM_FIRST_PERIOD_GOALS
+  TEAM_FIRST_INNING_SCORE
+  TEAM_FIRST_FIVE_RUNS
+  WINNING_MARGIN
+  OVERTIME_YES_NO
+  TEAM_TO_SCORE_FIRST
+  TEAM_TO_SCORE_LAST
+  BOTH_TEAMS_TO_SCORE
+  FIRST_TO_SCORE_X_POINTS
+  
+  // Basketball (NBA)
+  PLAYER_POINTS
+  PLAYER_REBOUNDS
+  PLAYER_ASSISTS
+  PLAYER_STEALS
+  PLAYER_BLOCKS
+  PLAYER_THREES
+  PLAYER_PRA
+  PLAYER_PR
+  PLAYER_PA
+  PLAYER_RA
+  DOUBLE_DOUBLE
+  TRIPLE_DOUBLE
+  PLAYER_TURNOVERS
+  PLAYER_FANTASY_POINTS
+  TEAM_TOTAL_POINTS_NBA
+  TEAM_FIRST_HALF_POINTS_NBA
+  TEAM_FIRST_QUARTER_POINTS_NBA
+  
+  // Football (NFL)
+  PLAYER_PASSING_YARDS
+  PLAYER_RUSHING_YARDS
+  PLAYER_RECEIVING_YARDS
+  PLAYER_RECEPTIONS
+  PLAYER_PASSING_TDS
+  PLAYER_RUSHING_TDS
+  PLAYER_RECEIVING_TDS
+  PLAYER_ANYTIME_TD
+  PLAYER_FIRST_TD
+  PLAYER_LONGEST_RECEPTION
+  PLAYER_LONGEST_RUSH
+  PLAYER_INTERCEPTIONS
+  PLAYER_COMPLETIONS
+  PLAYER_ATTEMPTS
+  PLAYER_PASS_ATTEMPTS
+  PLAYER_PASS_COMPLETIONS
+  PLAYER_FIELD_GOALS_MADE
+  PLAYER_FIELD_GOALS_ATTEMPTED
+  PLAYER_EXTRA_POINTS_MADE
+  PLAYER_PUNTS
+  TEAM_TOTAL_POINTS_NFL
+  TEAM_FIRST_HALF_POINTS_NFL
+  TEAM_FIRST_QUARTER_POINTS_NFL
+  
+  // Baseball (MLB)
+  RUN_LINE
+  TOTAL_RUNS
+  PLAYER_HITS
+  PLAYER_HOME_RUNS
+  PLAYER_RBIS
+  PLAYER_RUNS
+  PLAYER_TOTAL_BASES
+  PLAYER_STOLEN_BASES
+  PLAYER_WALKS
+  PITCHER_STRIKEOUTS
+  PITCHER_OUTS_RECORDED
+  PITCHER_EARNED_RUNS
+  PITCHER_HITS_ALLOWED
+  PITCHER_WALKS_ALLOWED
+  TEAM_TOTAL_RUNS
+  TEAM_FIRST_FIVE_RUNS_MLB
+  TEAM_FIRST_INNING_SCORE_MLB
+  
+  // Hockey (NHL)
+  PUCK_LINE
+  TOTAL_GOALS
+  PLAYER_GOALS
+  PLAYER_ASSISTS_NHL
+  PLAYER_POINTS_NHL
+  PLAYER_SHOTS
+  PLAYER_BLOCKS_NHL
+  PLAYER_PIM
+  PLAYER_POWER_PLAY_POINTS
+  GOALIE_SAVES
+  GOALIE_SHOTS_AGAINST
+  TEAM_TOTAL_GOALS
+}
+
+enum MarketQualifier {
+  OVER
+  UNDER
+  NONE
+}
+
 model Bet {
   id              String    @id @default(uuid())
   userId          String    @map("user_id")
@@ -48,19 +164,118 @@ model Bet {
   @@map("bets")
 }
 
+model Team {
+  id            String     @id @default(uuid())
+  league        LeagueEnum
+  name          String
+  abbreviation  String?
+  location      String?
+  espnId        String?
+  players       Player[]
+  homeGames     Game[]     @relation("HomeTeam")
+  awayGames     Game[]     @relation("AwayTeam")
+  legs          Leg[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  @@unique([espnId, league])
+  @@index([league])
+  @@index([espnId])
+}
+
+model Player {
+  id        String     @id @default(uuid())
+  league    LeagueEnum
+  teamId    String?
+  team      Team?      @relation(fields: [teamId], references: [id])
+  fullName  String
+  position  String?
+  espnId    String?    @unique
+  legs      Leg[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  @@index([league])
+  @@index([teamId])
+  @@index([espnId])
+}
+
+model Game {
+  id          String     @id @default(uuid())
+  league      LeagueEnum
+  espnEventId String?    @unique
+  startTime   DateTime
+  status      String     // "scheduled" | "in_progress" | "final" | etc.
+  homeTeamId  String
+  awayTeamId  String
+  homeTeam    Team       @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam    Team       @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  homeScore   Int?
+  awayScore   Int?
+  wentToOvertime Boolean? @default(false)
+  // Period/quarter scoring: JSON array [period1, period2, period3, period4, ot?]
+  // NBA/NFL: 4 quarters + optional OT periods
+  // NHL: 3 periods + optional OT periods
+  homePeriodScores Json? // Array of scores per period [q1, q2, q3, q4, ot1?, ot2?, ...]
+  awayPeriodScores Json? // Array of scores per period [q1, q2, q3, q4, ot1?, ot2?, ...]
+  legs        Leg[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  @@index([league])
+  @@index([startTime])
+  @@index([status])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([espnEventId])
+}
+
+model Alias {
+  id            String   @id @default(uuid())
+  canonicalType String   // "team" | "player" | "market"
+  canonicalId   String   // id of Team/Player or Market enum value
+  label         String   // raw label ("L. James", "Lebron", "Los Angeles Lakers", "LAL")
+  source        String?  // "bet365" | "fanduel" | "ocr" | etc.
+  confidence    Float?   // 0..1, optional
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([canonicalType, canonicalId])
+  @@index([label])
+  @@index([source])
+}
+
 model Leg {
-  id          String    @id @default(uuid())
-  betId       String    @map("bet_id")
-  description String    @db.Text
-  eventName   String    @map("event_name")
-  eventDate   DateTime  @map("event_date")
-  odds        Decimal   @db.Decimal(10, 2)
+  id          String          @id @default(uuid())
+  betId       String          @map("bet_id")
+  description String          @db.Text
+  eventName   String          @map("event_name")
+  eventDate   DateTime        @map("event_date")
+  odds        Decimal         @db.Decimal(10, 2)
   result      BetResult
-  createdAt   DateTime  @default(now()) @map("created_at")
-
-  bet Bet @relation(fields: [betId], references: [id], onDelete: Cascade)
-
+  createdAt   DateTime        @default(now()) @map("created_at")
+  
+  // NEW: canonical references (nullable at first, backfill later)
+  sport       SportEnum?
+  league      LeagueEnum?
+  teamId      String?
+  playerId    String?
+  market      Market?
+  gameId      String?
+  espnEventId String?
+  
+  // NEW: structured fields for player/team markets
+  threshold   Decimal?        @db.Decimal(10, 2)  // e.g., 7.0
+  qualifier   MarketQualifier?                    // OVER/UNDER/NONE
+  
+  // Relations
+  bet     Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)
+  team    Team?   @relation(fields: [teamId], references: [id])
+  player  Player? @relation(fields: [playerId], references: [id])
+  game    Game?   @relation(fields: [gameId], references: [id])
+  
   @@index([betId])
   @@index([eventName])
+  @@index([playerId])
+  @@index([teamId])
+  @@index([market])
+  @@index([gameId])
+  @@index([espnEventId])
   @@map("legs")
 }
