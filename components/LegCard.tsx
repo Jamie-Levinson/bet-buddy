@@ -2,6 +2,7 @@
 
 import { formatEventDate, getBorderColorClass, formatOdds } from "@/lib/bet-helpers";
 import { useOddsFormat } from "@/lib/odds-format-context";
+import { formatMarketDisplay } from "@/lib/market-helpers";
 import type { SerializedBetWithLegs } from "@/lib/serialize";
 
 interface LegCardProps {
@@ -12,11 +13,21 @@ export function LegCard({ leg }: LegCardProps) {
   const borderColorClass = getBorderColorClass(leg.result);
   const { format } = useOddsFormat();
 
+  // use legacy leg description first for backwards compatibility
+  const displayDescription = leg.description || 
+    (leg.market ? formatMarketDisplay(
+      leg.market,
+      leg.playerId ? undefined : null, // Would need player name, but we don't have it here
+      leg.teamId ? undefined : null, // Would need team name, but we don't have it here
+      leg.qualifier || undefined,
+      leg.threshold || undefined
+    ) : "Leg");
+
   return (
     <div className={`rounded-lg border-2 ${borderColorClass} bg-card p-4`}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <div className="font-medium text-sm">{leg.description}</div>
+          <div className="font-medium text-sm">{displayDescription}</div>
           <div className="text-xs text-muted-foreground mt-1">
             {leg.eventName} • {formatEventDate(leg.eventDate)}
           </div>

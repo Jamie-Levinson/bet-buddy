@@ -6,6 +6,59 @@ import { betFormSchema, type BetFormData } from "@/lib/validations/bet";
 import { revalidatePath } from "next/cache";
 import { serializeBet, serializeBets, type SerializedBetWithLegs } from "@/lib/serialize";
 import { calculateBetResult, calculateBetOdds } from "@/lib/bet-helpers";
+import { formatMarketDisplay } from "@/lib/market-helpers";
+
+async function buildLegPayload(leg: BetFormData["legs"][number]) {
+  const game = await prisma.game.findUnique({
+    where: { id: leg.gameId },
+    include: {
+      homeTeam: true,
+      awayTeam: true,
+    },
+  });
+
+  if (!game) {
+    throw new Error(`Game not found: ${leg.gameId}`);
+  }
+
+  const eventName = `${game.awayTeam.name} vs ${game.homeTeam.name}`;
+
+  const player = leg.playerId
+    ? await prisma.player.findUnique({
+        where: { id: leg.playerId },
+      })
+    : null;
+
+  const team = leg.teamId
+    ? await prisma.team.findUnique({
+        where: { id: leg.teamId },
+      })
+    : null;
+
+  const description = formatMarketDisplay(
+    leg.market,
+    player?.fullName,
+    team?.name,
+    leg.qualifier || undefined,
+    leg.threshold || undefined
+  );
+
+  return {
+    league: leg.league,
+    gameId: leg.gameId,
+    market: leg.market,
+    playerId: leg.playerId || null,
+    teamId: leg.teamId || null,
+    qualifier: leg.qualifier || null,
+    threshold: leg.threshold || null,
+    espnEventId: game.espnEventId,
+    description,
+    eventName,
+    eventDate: game.startTime,
+    odds: leg.odds,
+    result: leg.result,
+  };
+}
 
 export async function createBet(data: BetFormData) {
   const user = await getCurrentUser();
@@ -17,6 +70,8 @@ export async function createBet(data: BetFormData) {
 
   const betResult = calculateBetResult(validated.legs);
   const calculatedOdds = calculateBetOdds(validated.legs);
+
+  const legData = await Promise.all(validated.legs.map(buildLegPayload));
 
   const bet = await prisma.bet.create({
     data: {
@@ -31,13 +86,7 @@ export async function createBet(data: BetFormData) {
       boostPercentage: validated.boostPercentage ?? null,
       isNoSweat: validated.isNoSweat,
       legs: {
-        create: validated.legs.map((leg) => ({
-          description: leg.description,
-          eventName: leg.eventName,
-          odds: leg.odds,
-          result: leg.result,
-          eventDate: new Date(validated.date),
-        })),
+        create: legData,
       },
     },
     include: {
@@ -141,6 +190,8 @@ export async function updateBet(id: string, data: BetFormData) {
     throw new Error("Bet not found");
   }
 
+  const legData = await Promise.all(validated.legs.map(buildLegPayload));
+
   const bet = await prisma.bet.update({
     where: {
       id,
@@ -157,14 +208,7 @@ export async function updateBet(id: string, data: BetFormData) {
       isNoSweat: validated.isNoSweat,
       legs: {
         deleteMany: {},
-        create: validated.legs.map((leg) => ({
-          description: leg.description,
-          eventName: leg.eventName,
-          odds: leg.odds,
-          result: leg.result,
-          // TODO: Replace with actual event date from ESPN API when integrated
-          eventDate: new Date(validated.date),
-        })),
+        create: legData,
       },
     },
     include: {

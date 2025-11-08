@@ -261,8 +261,8 @@ model Leg {
   espnEventId String?
   
   // NEW: structured fields for player/team markets
-  threshold   Decimal?        @db.Decimal(10, 2)  // e.g., 7.0
-  qualifier   MarketQualifier?                    // OVER/UNDER/NONE
+  threshold   Decimal?        @db.Decimal(10, 2)  // e.g., 7.0 for over/under, -5.5/+2.5 for spread markets
+  qualifier   MarketQualifier?                    // OVER/UNDER/NONE (not used for spread markets)
   
   // Relations
   bet     Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)

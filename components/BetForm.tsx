@@ -6,13 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { betFormSchema, type BetFormData } from "@/lib/validations/bet";
 import { calculateBetOdds, calculateBetResult, americanToDecimal, formatOdds } from "@/lib/bet-helpers";
 import { useOddsFormat } from "@/lib/odds-format-context";
+import { getGamesByLeagueAndDate, getPlayersByGame, type GameWithTeams, type PlayerOption } from "@/actions/game-actions";
+import { isPlayerMarket, isTeamMarket, isSpreadMarket, requiresQualifier, getMarketsForLeague, getMarketLabel } from "@/lib/market-helpers";
+import { LeagueEnum, Market, MarketQualifier } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
 interface BetFormProps {
@@ -24,6 +26,14 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { format } = useOddsFormat();
   const [oddsInputs, setOddsInputs] = useState<Record<number, string>>({});
+  
+  // State for games and players per leg
+  const [gamesByLeg, setGamesByLeg] = useState<Record<number, GameWithTeams[]>>({});
+  const [playersByLeg, setPlayersByLeg] = useState<Record<number, PlayerOption[]>>({});
+  const [loadingGames, setLoadingGames] = useState<Record<number, boolean>>({});
+  const [loadingPlayers, setLoadingPlayers] = useState<Record<number, boolean>>({});
+  // Track which league/date combination was used for caching
+  const [gamesCacheKey, setGamesCacheKey] = useState<Record<number, string>>({});
 
   // Auto-detect odds format and conditionally validate based on format
   const parseOddsInput = (value: string): number => {
@@ -66,7 +76,17 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
     defaultValues: {
       isBonusBet: false,
       isNoSweat: false,
-      legs: [{ description: "", eventName: "", odds: 0, result: "pending" }],
+        legs: [{
+          league: undefined as any,
+          gameId: "",
+          market: undefined as any,
+          playerId: undefined,
+          teamId: undefined,
+          qualifier: undefined as any,
+          threshold: undefined,
+          odds: 0,
+          result: "pending",
+        }],
       date: new Date().toISOString().split("T")[0],
       ...defaultValues,
     },
@@ -82,6 +102,93 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
   const isBonusBet = useWatch({ control, name: "isBonusBet" });
   const boostPercentage = useWatch({ control, name: "boostPercentage" });
   const isNoSweat = useWatch({ control, name: "isNoSweat" });
+  const betDate = useWatch({ control, name: "date" });
+
+  // Fetch games when league/date changes for each leg
+  useEffect(() => {
+    const fetchGamesForLegs = async () => {
+      for (let i = 0; i < (legs?.length || 0); i++) {
+        const leg = legs?.[i];
+        if (leg?.league && betDate) {
+          // Parse date string (YYYY-MM-DD) to local date, avoiding timezone issues
+          const [year, month, day] = betDate.split('-').map(Number);
+          const date = new Date(year, month - 1, day);
+          const cacheKey = `${i}-${leg.league}-${betDate}`;
+          
+          // Check if we need to fetch (no cache or cache is for different league/date)
+          const currentCacheKey = gamesCacheKey[i];
+          const needsFetch = !currentCacheKey || currentCacheKey !== cacheKey;
+          
+          if (needsFetch) {
+            setLoadingGames((prev) => ({ ...prev, [i]: true }));
+            try {
+              const games = await getGamesByLeagueAndDate(leg.league, date);
+              setGamesByLeg((prev) => ({ ...prev, [i]: games }));
+              setGamesCacheKey((prev) => ({ ...prev, [i]: cacheKey }));
+            } catch (error) {
+              console.error(`Error fetching games for leg ${i}:`, error);
+              setGamesByLeg((prev) => ({ ...prev, [i]: [] }));
+              setGamesCacheKey((prev) => ({ ...prev, [i]: cacheKey }));
+            } finally {
+              setLoadingGames((prev) => ({ ...prev, [i]: false }));
+            }
+          }
+        } else {
+          // Clear games if league or date is cleared
+          if (gamesByLeg[i]) {
+            setGamesByLeg((prev) => {
+              const newState = { ...prev };
+              delete newState[i];
+              return newState;
+            });
+            setGamesCacheKey((prev) => {
+              const newState = { ...prev };
+              delete newState[i];
+              return newState;
+            });
+          }
+        }
+      }
+    };
+
+    fetchGamesForLegs();
+  }, [legs?.map(l => `${l?.league}`).join(','), betDate]);
+
+  // Fetch players when game changes for each leg
+  useEffect(() => {
+    const fetchPlayersForLegs = async () => {
+      for (let i = 0; i < (legs?.length || 0); i++) {
+        const leg = legs?.[i];
+        if (leg?.gameId) {
+          // Only fetch if we don't have players cached for this leg
+          if (!playersByLeg[i] || playersByLeg[i].length === 0) {
+            setLoadingPlayers((prev) => ({ ...prev, [i]: true }));
+            try {
+              const players = await getPlayersByGame(leg.gameId);
+              setPlayersByLeg((prev) => ({ ...prev, [i]: players }));
+            } catch (error) {
+              console.error(`Error fetching players for leg ${i}:`, error);
+              setPlayersByLeg((prev) => ({ ...prev, [i]: [] }));
+            } finally {
+              setLoadingPlayers((prev) => ({ ...prev, [i]: false }));
+            }
+          }
+        } else {
+          // Clear players if game is cleared
+          if (playersByLeg[i]) {
+            setPlayersByLeg((prev) => {
+              const newState = { ...prev };
+              delete newState[i];
+              return newState;
+            });
+          }
+        }
+      }
+    };
+
+    fetchPlayersForLegs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legs?.map(l => l?.gameId).join(',')]);
 
   // Initialize odds inputs from defaultValues
   useEffect(() => {
@@ -99,8 +206,9 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
   const calculatedBetType = useMemo(() => {
     if (!legs || legs.length === 0) return null;
     if (legs.length === 1) return "straight";
-    const uniqueEvents = new Set(legs.map((leg) => leg.eventName).filter(Boolean));
-    if (uniqueEvents.size === 1) return "same_game_parlay";
+    // Use gameId instead of eventName for determining same game parlay
+    const uniqueGames = new Set(legs.map((leg) => leg.gameId).filter(Boolean));
+    if (uniqueGames.size === 1) return "same_game_parlay";
     return "parlay";
   }, [legs]);
 
@@ -184,57 +292,333 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor={`legs.${index}.description`}>
-                  Description <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  id={`legs.${index}.description`}
-                  placeholder="e.g., Lakers -5.5, Over 220.5 points"
-                  className={errors.legs?.[index]?.description ? "border-destructive" : ""}
-                  {...register(`legs.${index}.description`)}
-                />
-                {errors.legs?.[index]?.description && (
-                  <p className="text-sm text-destructive">{errors.legs[index]?.description?.message}</p>
+              {/* Cascading Selectors */}
+              <div className="space-y-4">
+                {/* League Selector */}
+                <div className="space-y-2">
+                  <Label htmlFor={`legs.${index}.league`}>
+                    League <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={legs?.[index]?.league || ""}
+                      onValueChange={(value) => {
+                        setValue(`legs.${index}.league`, value as LeagueEnum);
+                        setValue(`legs.${index}.gameId`, "");
+                        setValue(`legs.${index}.market`, undefined as any);
+                        setValue(`legs.${index}.playerId`, undefined);
+                        setValue(`legs.${index}.teamId`, undefined);
+                        setValue(`legs.${index}.qualifier`, undefined as any);
+                        setValue(`legs.${index}.threshold`, undefined);
+                        // Clear cached games/players
+                        setGamesByLeg((prev) => {
+                          const newState = { ...prev };
+                          delete newState[index];
+                          return newState;
+                        });
+                        setGamesCacheKey((prev) => {
+                          const newState = { ...prev };
+                          delete newState[index];
+                          return newState;
+                        });
+                        setPlayersByLeg((prev) => {
+                          const newState = { ...prev };
+                          delete newState[index];
+                          return newState;
+                        });
+                      }}
+                  >
+                    <SelectTrigger id={`legs.${index}.league`} className={errors.legs?.[index]?.league ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Select league" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={LeagueEnum.NBA}>NBA</SelectItem>
+                      <SelectItem value={LeagueEnum.NFL}>NFL</SelectItem>
+                      <SelectItem value={LeagueEnum.NHL}>NHL</SelectItem>
+                      <SelectItem value={LeagueEnum.MLB}>MLB</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.legs?.[index]?.league && (
+                    <p className="text-sm text-destructive">{errors.legs[index]?.league?.message}</p>
+                  )}
+                </div>
+
+                {/* Date Selector - uses bet date, but can be overridden per leg if needed */}
+                <div className="space-y-2">
+                  <Label>Event Date</Label>
+                  <Input
+                    type="date"
+                    value={betDate || new Date().toISOString().split("T")[0]}
+                    onChange={(e) => {
+                      setValue("date", e.target.value);
+                      // Clear games when date changes
+                      setGamesByLeg((prev) => {
+                        const newState = { ...prev };
+                        delete newState[index];
+                        return newState;
+                      });
+                      setGamesCacheKey((prev) => {
+                        const newState = { ...prev };
+                        delete newState[index];
+                        return newState;
+                      });
+                    }}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Event Selector */}
+                {legs?.[index]?.league && betDate && (
+                  <div className="space-y-2">
+                    <Label htmlFor={`legs.${index}.gameId`}>
+                      Event <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={legs?.[index]?.gameId || ""}
+                      onValueChange={(value) => {
+                        setValue(`legs.${index}.gameId`, value);
+                        setValue(`legs.${index}.playerId`, undefined);
+                        setValue(`legs.${index}.teamId`, undefined);
+                        // Clear cached players
+                        setPlayersByLeg((prev) => {
+                          const newState = { ...prev };
+                          delete newState[index];
+                          return newState;
+                        });
+                      }}
+                      disabled={loadingGames[index]}
+                    >
+                      <SelectTrigger id={`legs.${index}.gameId`} className={errors.legs?.[index]?.gameId ? "border-destructive" : ""}>
+                        <SelectValue placeholder={loadingGames[index] ? "Loading games..." : "Select event"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gamesByLeg[index]?.map((game) => (
+                          <SelectItem key={game.id} value={game.id}>
+                            {game.awayTeam.name} vs {game.homeTeam.name}
+                            {game.startTime && ` • ${new Date(game.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                          </SelectItem>
+                        ))}
+                        {(!gamesByLeg[index] || gamesByLeg[index].length === 0) && !loadingGames[index] && (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            No games found for this date
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {errors.legs?.[index]?.gameId && (
+                      <p className="text-sm text-destructive">{errors.legs[index]?.gameId?.message}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Market Selector */}
+                {legs?.[index]?.league && (
+                  <div className="space-y-2">
+                    <Label htmlFor={`legs.${index}.market`}>
+                      Market <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={legs?.[index]?.market || ""}
+                      onValueChange={(value) => {
+                        setValue(`legs.${index}.market`, value as Market);
+                        // Clear dependent fields when market changes
+                        setValue(`legs.${index}.playerId`, undefined);
+                        setValue(`legs.${index}.teamId`, undefined);
+                        setValue(`legs.${index}.qualifier`, undefined as any);
+                        setValue(`legs.${index}.threshold`, undefined);
+                      }}
+                    >
+                      <SelectTrigger id={`legs.${index}.market`} className={errors.legs?.[index]?.market ? "border-destructive" : ""}>
+                        <SelectValue placeholder="Select market" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getMarketsForLeague(legs[index].league).map((market) => {
+                          const marketLabel = getMarketLabel(market);
+                          return (
+                            <SelectItem key={market} value={market}>
+                              {marketLabel}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {errors.legs?.[index]?.market && (
+                      <p className="text-sm text-destructive">{errors.legs[index]?.market?.message}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Team Selector - conditional (for team markets) */}
+                {legs?.[index]?.market && isTeamMarket(legs[index].market) && legs?.[index]?.gameId && gamesByLeg[index] && (
+                  <div className="space-y-2">
+                    <Label htmlFor={`legs.${index}.teamId`}>
+                      Team <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={legs?.[index]?.teamId || ""}
+                      onValueChange={(value) => setValue(`legs.${index}.teamId`, value)}
+                    >
+                      <SelectTrigger id={`legs.${index}.teamId`} className={errors.legs?.[index]?.teamId ? "border-destructive" : ""}>
+                        <SelectValue placeholder="Select team" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gamesByLeg[index] && gamesByLeg[index].length > 0 && (
+                          <>
+                            <SelectItem value={gamesByLeg[index][0].awayTeam.id}>
+                              {gamesByLeg[index][0].awayTeam.name}
+                            </SelectItem>
+                            <SelectItem value={gamesByLeg[index][0].homeTeam.id}>
+                              {gamesByLeg[index][0].homeTeam.name}
+                            </SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {errors.legs?.[index]?.teamId && (
+                      <p className="text-sm text-destructive">{errors.legs[index]?.teamId?.message}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Player Selector - conditional */}
+                {legs?.[index]?.market && isPlayerMarket(legs[index].market) && legs?.[index]?.gameId && (
+                  <div className="space-y-2">
+                    <Label htmlFor={`legs.${index}.playerId`}>
+                      Player <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={legs?.[index]?.playerId || ""}
+                      onValueChange={(value) => setValue(`legs.${index}.playerId`, value)}
+                      disabled={loadingPlayers[index]}
+                    >
+                      <SelectTrigger id={`legs.${index}.playerId`} className={errors.legs?.[index]?.playerId ? "border-destructive" : ""}>
+                        <SelectValue placeholder={loadingPlayers[index] ? "Loading players..." : "Select player"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {playersByLeg[index]?.map((player) => (
+                          <SelectItem key={player.id} value={player.id}>
+                            {player.fullName}
+                            {player.position && ` (${player.position})`}
+                          </SelectItem>
+                        ))}
+                        {(!playersByLeg[index] || playersByLeg[index].length === 0) && !loadingPlayers[index] && (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            No players found
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {errors.legs?.[index]?.playerId && (
+                      <p className="text-sm text-destructive">{errors.legs[index]?.playerId?.message}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Threshold Input (for spread markets, can be negative or positive) */}
+                {legs?.[index]?.market && isSpreadMarket(legs[index].market) && legs?.[index]?.teamId && (
+                  <div className="space-y-2">
+                    <Label htmlFor={`legs.${index}.threshold`}>
+                      Differential <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id={`legs.${index}.threshold`}
+                      type="number"
+                      step="0.5"
+                      placeholder="e.g., -1.5 or +2.5"
+                      value={legs?.[index]?.threshold !== undefined && legs[index].threshold !== null ? legs[index].threshold.toString() : ""}
+                      onChange={(e) => {
+                        const value = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                        setValue(`legs.${index}.threshold`, value, { shouldValidate: true });
+                      }}
+                      className={errors.legs?.[index]?.threshold ? "border-destructive" : ""}
+                      onWheel={(e) => e.currentTarget.blur()}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Negative means favorite (e.g., -1.5), positive means underdog (e.g., +2.5)
+                    </p>
+                    {errors.legs?.[index]?.threshold && (
+                      <p className="text-sm text-destructive">{errors.legs[index]?.threshold?.message}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Over/Under Selector */}
+                {legs?.[index]?.market && requiresQualifier(legs[index].market) && !isSpreadMarket(legs[index].market) && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor={`legs.${index}.qualifier`}>
+                        Over/Under <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={legs?.[index]?.qualifier || ""}
+                        onValueChange={(value) => {
+                          setValue(`legs.${index}.qualifier`, value as MarketQualifier);
+                          if (value === MarketQualifier.NONE) {
+                            setValue(`legs.${index}.threshold`, undefined);
+                          }
+                        }}
+                      >
+                        <SelectTrigger id={`legs.${index}.qualifier`} className={errors.legs?.[index]?.qualifier ? "border-destructive" : ""}>
+                          <SelectValue placeholder="Select over/under" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={MarketQualifier.OVER}>Over</SelectItem>
+                          <SelectItem value={MarketQualifier.UNDER}>Under</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {errors.legs?.[index]?.qualifier && (
+                        <p className="text-sm text-destructive">{errors.legs[index]?.qualifier?.message}</p>
+                      )}
+                    </div>
+
+                    {/* Threshold Input (for over/under markets, must be positive) */}
+                    {legs?.[index]?.qualifier && legs[index].qualifier !== MarketQualifier.NONE && (
+                      <div className="space-y-2">
+                        <Label htmlFor={`legs.${index}.threshold`}>
+                          Threshold <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id={`legs.${index}.threshold`}
+                          type="number"
+                          step="0.5"
+                          min="0.5"
+                          placeholder="e.g., 9.5"
+                          value={legs?.[index]?.threshold || ""}
+                          onChange={(e) => {
+                            const value = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                            setValue(`legs.${index}.threshold`, value, { shouldValidate: true });
+                          }}
+                          className={errors.legs?.[index]?.threshold ? "border-destructive" : ""}
+                          onWheel={(e) => e.currentTarget.blur()}
+                        />
+                        {errors.legs?.[index]?.threshold && (
+                          <p className="text-sm text-destructive">{errors.legs[index]?.threshold?.message}</p>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor={`legs.${index}.eventName`}>
-                    Event Name <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id={`legs.${index}.eventName`}
-                    placeholder="e.g., Lakers vs Warriors"
-                    className={errors.legs?.[index]?.eventName ? "border-destructive" : ""}
-                    {...register(`legs.${index}.eventName`)}
-                  />
-                  {errors.legs?.[index]?.eventName && (
-                    <p className="text-sm text-destructive">{errors.legs[index]?.eventName?.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor={`legs.${index}.odds`}>
-                    Odds <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id={`legs.${index}.odds`}
-                    type="text"
-                    placeholder="e.g., 1.85 or +150"
-                    value={oddsInputs[index] ?? (legs?.[index]?.odds ? legs[index].odds.toString() : "")}
-                    onChange={(e) => handleOddsChange(index, e.target.value)}
-                    className={errors.legs?.[index]?.odds ? "border-destructive" : ""}
-                    onWheel={(e) => e.currentTarget.blur()}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Enter decimal (e.g., 1.85) or American (e.g., +150, -200)
-                  </p>
-                  {errors.legs?.[index]?.odds && (
-                    <p className="text-sm text-destructive">{errors.legs[index]?.odds?.message}</p>
-                  )}
-                </div>
+              {/* Odds Input */}
+              <div className="space-y-2">
+                <Label htmlFor={`legs.${index}.odds`}>
+                  Odds <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id={`legs.${index}.odds`}
+                  type="text"
+                  placeholder="e.g., 1.85 or +150"
+                  value={oddsInputs[index] ?? (legs?.[index]?.odds ? legs[index].odds.toString() : "")}
+                  onChange={(e) => handleOddsChange(index, e.target.value)}
+                  className={errors.legs?.[index]?.odds ? "border-destructive" : ""}
+                  onWheel={(e) => e.currentTarget.blur()}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter decimal (e.g., 1.85) or American (e.g., +150, -200)
+                </p>
+                {errors.legs?.[index]?.odds && (
+                  <p className="text-sm text-destructive">{errors.legs[index]?.odds?.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -269,7 +653,17 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
             type="button"
             variant="outline"
             onClick={() => {
-              append({ description: "", eventName: "", odds: 0, result: "pending" });
+              append({
+                league: undefined as any,
+                gameId: "",
+                market: undefined as any,
+                playerId: undefined,
+                teamId: undefined,
+                qualifier: undefined as any,
+                threshold: undefined,
+                odds: 0,
+                result: "pending",
+              });
               setOddsInputs((prev) => {
                 const newInputs = { ...prev };
                 newInputs[fields.length] = "";
