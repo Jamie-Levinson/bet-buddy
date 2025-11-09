@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface BetFormProps {
   onSubmit: (data: BetFormData) => Promise<void>;
@@ -357,11 +358,10 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                 {/* Date Selector - per leg */}
                 <div className="space-y-2">
                   <Label>Event Date</Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={legs?.[index]?.date || new Date().toISOString().split("T")[0]}
-                    onChange={(e) => {
-                      setValue(`legs.${index}.date`, e.target.value);
+                    onChange={(value) => {
+                      setValue(`legs.${index}.date`, value);
                       // Clear games when date changes
                       setGamesByLeg((prev) => {
                         const newState = { ...prev };
@@ -374,7 +374,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                         return newState;
                       });
                     }}
-                    className="w-full cursor-pointer"
+                    placeholder="Pick a date"
                   />
                 </div>
 
