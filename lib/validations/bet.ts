@@ -18,6 +18,7 @@ export const legSchema = z.object({
   teamId: z.string().optional(),
   qualifier: z.enum(MARKET_QUALIFIER_VALUES).optional(),
   threshold: z.coerce.number().optional(), // For over/under: positive only. For spread: can be negative or positive
+  date: z.string().optional(), // Date for fetching games (UI only, event date comes from game)
   
   // Legacy/display fields (auto-populated, optional for backwards compatibility)
   description: z.string().optional(),
@@ -79,7 +80,7 @@ export const legSchema = z.object({
 export const betFormSchema = z.object({
   betType: z.enum(["straight", "same_game_parlay", "parlay"] as const).optional(),
   wager: z.coerce.number().positive("Wager must be positive"),
-  date: z.string().min(1, "Date is required"),
+  date: z.string().optional(), // Will be calculated from leg dates
   legs: z.array(legSchema).min(1, "At least one leg is required"),
   isBonusBet: z.boolean().default(false),
   boostPercentage: z.preprocess(
@@ -102,6 +103,20 @@ export const betFormSchema = z.object({
     }
   }
 
+  // Calculate bet date from leg dates (use the most future date)
+  let betDate: string;
+  const legDates = data.legs
+    .map((leg) => leg.date)
+    .filter((date): date is string => Boolean(date));
+  
+  if (legDates.length > 0) {
+    // Sort dates descending and take the first (most future)
+    betDate = legDates.sort((a, b) => b.localeCompare(a))[0];
+  } else {
+    // Fallback to today if no leg dates
+    betDate = new Date().toISOString().split("T")[0];
+  }
+
   const totalOdds = calculateBetOdds(data.legs);
 
   // Calculate payout based on modifiers
@@ -122,6 +137,7 @@ export const betFormSchema = z.object({
   return {
     ...data,
     betType,
+    date: betDate,
     odds: totalOdds,
     payout,
   };

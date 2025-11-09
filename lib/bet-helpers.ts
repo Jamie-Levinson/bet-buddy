@@ -60,19 +60,19 @@ export function getBetTypeLabel(betType: string, legCount: number): string {
 /**
  * Format event date for display
  */
-export function formatEventDate(dateString: string): string {
+export function formatEventDate(dateString: string, timezone: string = "America/New_York"): string {
   const date = new Date(dateString);
-  
-  // Format as "MMM d, h:mma" (e.g., "Nov 8, 8:00pm")
-  const month = date.toLocaleDateString("en-US", { month: "short" });
-  const day = date.getDate();
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const ampm = hours >= 12 ? "pm" : "am";
-  const displayHours = hours % 12 || 12;
-  const displayMinutes = minutes > 0 ? `:${minutes.toString().padStart(2, "0")}` : "";
-  
-  return `${month} ${day}, ${displayHours}${displayMinutes}${ampm}`;
+
+  const formatted = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+
+  // Lowercase AM/PM to match previous style (e.g., "Nov 8, 8:00pm")
+  return formatted.replace("AM", "am").replace("PM", "pm");
 }
 
 /**

@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { CreateBetForm } from "@/components/CreateBetForm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { OddsFormatSelector } from "@/components/OddsFormatSelector";
 
 export default async function NewBetPage() {
   const user = await getCurrentUser();
@@ -17,7 +16,6 @@ export default async function NewBetPage() {
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold">New Bet</h1>
         <div className="flex flex-row flex-nowrap gap-2">
-          <OddsFormatSelector />
           <Link href="/dashboard">
             <Button variant="outline" className="min-h-[44px] whitespace-nowrap">Cancel</Button>
           </Link>

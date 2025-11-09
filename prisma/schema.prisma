@@ -57,7 +57,7 @@ enum Market {
   TEAM_TO_SCORE_LAST
   BOTH_TEAMS_TO_SCORE
   FIRST_TO_SCORE_X_POINTS
-  
+
   // Basketball (NBA)
   PLAYER_POINTS
   PLAYER_REBOUNDS
@@ -76,7 +76,7 @@ enum Market {
   TEAM_TOTAL_POINTS_NBA
   TEAM_FIRST_HALF_POINTS_NBA
   TEAM_FIRST_QUARTER_POINTS_NBA
-  
+
   // Football (NFL)
   PLAYER_PASSING_YARDS
   PLAYER_RUSHING_YARDS
@@ -101,7 +101,7 @@ enum Market {
   TEAM_TOTAL_POINTS_NFL
   TEAM_FIRST_HALF_POINTS_NFL
   TEAM_FIRST_QUARTER_POINTS_NFL
-  
+
   // Baseball (MLB)
   RUN_LINE
   TOTAL_RUNS
@@ -120,7 +120,7 @@ enum Market {
   TEAM_TOTAL_RUNS
   TEAM_FIRST_FIVE_RUNS_MLB
   TEAM_FIRST_INNING_SCORE_MLB
-  
+
   // Hockey (NHL)
   PUCK_LINE
   TOTAL_GOALS
@@ -142,6 +142,18 @@ enum MarketQualifier {
   NONE
 }
 
+model User {
+  id                  String   @id
+  nickname            String?
+  timezone            String   @default("America/New_York")
+  preferredOddsFormat String   @default("decimal")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  bets                Bet[]
+
+  @@map("users")
+}
+
 model Bet {
   id              String    @id @default(uuid())
   userId          String    @map("user_id")
@@ -157,6 +169,7 @@ model Bet {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   legs Leg[]
 
   @@index([userId])
@@ -165,18 +178,19 @@ model Bet {
 }
 
 model Team {
-  id            String     @id @default(uuid())
-  league        LeagueEnum
-  name          String
-  abbreviation  String?
-  location      String?
-  espnId        String?
-  players       Player[]
-  homeGames     Game[]     @relation("HomeTeam")
-  awayGames     Game[]     @relation("AwayTeam")
-  legs          Leg[]
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id           String     @id @default(uuid())
+  league       LeagueEnum
+  name         String
+  abbreviation String?
+  location     String?
+  espnId       String?
+  players      Player[]
+  homeGames    Game[]     @relation("HomeTeam")
+  awayGames    Game[]     @relation("AwayTeam")
+  legs         Leg[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
   @@unique([espnId, league])
   @@index([league])
   @@index([espnId])
@@ -193,32 +207,34 @@ model Player {
   legs      Leg[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+
   @@index([league])
   @@index([teamId])
   @@index([espnId])
 }
 
 model Game {
-  id          String     @id @default(uuid())
-  league      LeagueEnum
-  espnEventId String?    @unique
-  startTime   DateTime
-  status      String     // "scheduled" | "in_progress" | "final" | etc.
-  homeTeamId  String
-  awayTeamId  String
-  homeTeam    Team       @relation("HomeTeam", fields: [homeTeamId], references: [id])
-  awayTeam    Team       @relation("AwayTeam", fields: [awayTeamId], references: [id])
-  homeScore   Int?
-  awayScore   Int?
-  wentToOvertime Boolean? @default(false)
+  id               String     @id @default(uuid())
+  league           LeagueEnum
+  espnEventId      String?    @unique
+  startTime        DateTime
+  status           String // "scheduled" | "in_progress" | "final" | etc.
+  homeTeamId       String
+  awayTeamId       String
+  homeTeam         Team       @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam         Team       @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  homeScore        Int?
+  awayScore        Int?
+  wentToOvertime   Boolean?   @default(false)
   // Period/quarter scoring: JSON array [period1, period2, period3, period4, ot?]
   // NBA/NFL: 4 quarters + optional OT periods
   // NHL: 3 periods + optional OT periods
   homePeriodScores Json? // Array of scores per period [q1, q2, q3, q4, ot1?, ot2?, ...]
   awayPeriodScores Json? // Array of scores per period [q1, q2, q3, q4, ot1?, ot2?, ...]
-  legs        Leg[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  legs             Leg[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
   @@index([league])
   @@index([startTime])
   @@index([status])
@@ -229,28 +245,29 @@ model Game {
 
 model Alias {
   id            String   @id @default(uuid())
-  canonicalType String   // "team" | "player" | "market"
-  canonicalId   String   // id of Team/Player or Market enum value
-  label         String   // raw label ("L. James", "Lebron", "Los Angeles Lakers", "LAL")
-  source        String?  // "bet365" | "fanduel" | "ocr" | etc.
-  confidence    Float?   // 0..1, optional
+  canonicalType String // "team" | "player" | "market"
+  canonicalId   String // id of Team/Player or Market enum value
+  label         String // raw label ("L. James", "Lebron", "Los Angeles Lakers", "LAL")
+  source        String? // "bet365" | "fanduel" | "ocr" | etc.
+  confidence    Float? // 0..1, optional
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
   @@index([canonicalType, canonicalId])
   @@index([label])
   @@index([source])
 }
 
 model Leg {
-  id          String          @id @default(uuid())
-  betId       String          @map("bet_id")
-  description String          @db.Text
-  eventName   String          @map("event_name")
-  eventDate   DateTime        @map("event_date")
-  odds        Decimal         @db.Decimal(10, 2)
+  id          String    @id @default(uuid())
+  betId       String    @map("bet_id")
+  description String    @db.Text
+  eventName   String    @map("event_name")
+  eventDate   DateTime  @map("event_date")
+  odds        Decimal   @db.Decimal(10, 2)
   result      BetResult
-  createdAt   DateTime        @default(now()) @map("created_at")
-  
+  createdAt   DateTime  @default(now()) @map("created_at")
+
   // NEW: canonical references (nullable at first, backfill later)
   sport       SportEnum?
   league      LeagueEnum?
@@ -259,17 +276,17 @@ model Leg {
   market      Market?
   gameId      String?
   espnEventId String?
-  
+
   // NEW: structured fields for player/team markets
-  threshold   Decimal?        @db.Decimal(10, 2)  // e.g., 7.0 for over/under, -5.5/+2.5 for spread markets
-  qualifier   MarketQualifier?                    // OVER/UNDER/NONE (not used for spread markets)
-  
+  threshold Decimal?         @db.Decimal(10, 2) // e.g., 7.0 for over/under, -5.5/+2.5 for spread markets
+  qualifier MarketQualifier? // OVER/UNDER/NONE (not used for spread markets)
+
   // Relations
-  bet     Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)
-  team    Team?   @relation(fields: [teamId], references: [id])
-  player  Player? @relation(fields: [playerId], references: [id])
-  game    Game?   @relation(fields: [gameId], references: [id])
-  
+  bet    Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)
+  team   Team?   @relation(fields: [teamId], references: [id])
+  player Player? @relation(fields: [playerId], references: [id])
+  game   Game?   @relation(fields: [gameId], references: [id])
+
   @@index([betId])
   @@index([eventName])
   @@index([playerId])

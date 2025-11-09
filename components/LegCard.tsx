@@ -2,6 +2,7 @@
 
 import { formatEventDate, getBorderColorClass, formatOdds } from "@/lib/bet-helpers";
 import { useOddsFormat } from "@/lib/odds-format-context";
+import { useUser } from "@/lib/user-context";
 import { formatMarketDisplay } from "@/lib/market-helpers";
 import type { SerializedBetWithLegs } from "@/lib/serialize";
 
@@ -12,6 +13,8 @@ interface LegCardProps {
 export function LegCard({ leg }: LegCardProps) {
   const borderColorClass = getBorderColorClass(leg.result);
   const { format } = useOddsFormat();
+  const profile = useUser();
+  const userTimezone = profile.timezone;
 
   // use legacy leg description first for backwards compatibility
   const displayDescription = leg.description || 
@@ -29,7 +32,7 @@ export function LegCard({ leg }: LegCardProps) {
         <div className="flex-1">
           <div className="font-medium text-sm">{displayDescription}</div>
           <div className="text-xs text-muted-foreground mt-1">
-            {leg.eventName} • {formatEventDate(leg.eventDate)}
+            {leg.eventName} • {formatEventDate(leg.eventDate, userTimezone)}
           </div>
         </div>
         <div className="text-right ml-4">

@@ -35,6 +35,11 @@ export default async function SignUpPage({
               <Input id="email" name="email" type="email" placeholder="you@example.com" required className="min-h-[44px]" />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="nickname">Nickname (optional)</Label>
+              <Input id="nickname" name="nickname" type="text" placeholder="Your nickname" maxLength={50} className="min-h-[44px]" />
+              <p className="text-xs text-muted-foreground">Leave blank to use your email as your nickname</p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input id="password" name="password" type="password" required minLength={6} className="min-h-[44px]" />
             </div>

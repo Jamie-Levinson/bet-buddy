@@ -4,7 +4,6 @@ import { getBets } from "@/actions/bet-actions";
 import { BetList } from "@/components/BetList";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { OddsFormatSelector } from "@/components/OddsFormatSelector";
 
 interface BetsPageProps {
   searchParams: Promise<{
@@ -28,7 +27,6 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">All Bets</h1>
         <div className="flex flex-row flex-nowrap gap-2">
-          <OddsFormatSelector />
           <Link href="/bets/new">
             <Button className="min-h-[44px] whitespace-nowrap">New Bet</Button>
           </Link>

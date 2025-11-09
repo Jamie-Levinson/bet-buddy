@@ -6,7 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { betFormSchema, type BetFormData } from "@/lib/validations/bet";
 import { calculateBetOdds, calculateBetResult, americanToDecimal, formatOdds } from "@/lib/bet-helpers";
 import { useOddsFormat } from "@/lib/odds-format-context";
+import { useUser } from "@/lib/user-context";
 import { getGamesByLeagueAndDate, getPlayersByGame, type GameWithTeams, type PlayerOption } from "@/actions/game-actions";
+import { formatDateInTimezone } from "@/lib/timezone-helpers";
 import { isPlayerMarket, isTeamMarket, isSpreadMarket, requiresQualifier, getMarketsForLeague, getMarketLabel } from "@/lib/market-helpers";
 import { LeagueEnum, Market, MarketQualifier } from "@prisma/client";
 import { Button } from "@/components/ui/button";
@@ -73,23 +75,32 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
     formState: { errors },
   } = useForm<BetFormData>({
     resolver: zodResolver(betFormSchema) as any,
-    defaultValues: {
-      isBonusBet: false,
-      isNoSweat: false,
-        legs: [{
-          league: undefined as any,
-          gameId: "",
-          market: undefined as any,
-          playerId: undefined,
-          teamId: undefined,
-          qualifier: undefined as any,
-          threshold: undefined,
-          odds: 0,
-          result: "pending",
-        }],
-      date: new Date().toISOString().split("T")[0],
-      ...defaultValues,
-    },
+    defaultValues: (() => {
+      const today = new Date().toISOString().split("T")[0];
+      // Ensure each leg has a date if defaultValues.legs exists
+      const processedLegs = defaultValues?.legs?.map(leg => ({
+        ...leg,
+        date: leg.date || today,
+      })) || [{
+        league: undefined as any,
+        gameId: "",
+        market: undefined as any,
+        playerId: undefined,
+        teamId: undefined,
+        qualifier: undefined as any,
+        threshold: undefined,
+        date: today,
+        odds: 0,
+        result: "pending",
+      }];
+      
+      return {
+        isBonusBet: false,
+        isNoSweat: false,
+        ...defaultValues,
+        legs: processedLegs, // Override with processed legs
+      };
+    })(),
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -102,18 +113,19 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
   const isBonusBet = useWatch({ control, name: "isBonusBet" });
   const boostPercentage = useWatch({ control, name: "boostPercentage" });
   const isNoSweat = useWatch({ control, name: "isNoSweat" });
-  const betDate = useWatch({ control, name: "date" });
+
+  // Get user timezone from context
+  const profile = useUser();
+  const userTimezone = profile.timezone;
 
   // Fetch games when league/date changes for each leg
   useEffect(() => {
     const fetchGamesForLegs = async () => {
       for (let i = 0; i < (legs?.length || 0); i++) {
         const leg = legs?.[i];
-        if (leg?.league && betDate) {
-          // Parse date string (YYYY-MM-DD) to local date, avoiding timezone issues
-          const [year, month, day] = betDate.split('-').map(Number);
-          const date = new Date(year, month - 1, day);
-          const cacheKey = `${i}-${leg.league}-${betDate}`;
+        const legDate = leg?.date || new Date().toISOString().split("T")[0]; // Use leg-specific date, fallback to today
+        if (leg?.league && legDate) {
+          const cacheKey = `${i}-${leg.league}-${legDate}`;
           
           // Check if we need to fetch (no cache or cache is for different league/date)
           const currentCacheKey = gamesCacheKey[i];
@@ -122,7 +134,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
           if (needsFetch) {
             setLoadingGames((prev) => ({ ...prev, [i]: true }));
             try {
-              const games = await getGamesByLeagueAndDate(leg.league, date);
+              const games = await getGamesByLeagueAndDate(leg.league, legDate, userTimezone);
               setGamesByLeg((prev) => ({ ...prev, [i]: games }));
               setGamesCacheKey((prev) => ({ ...prev, [i]: cacheKey }));
             } catch (error) {
@@ -152,7 +164,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
     };
 
     fetchGamesForLegs();
-  }, [legs?.map(l => `${l?.league}`).join(','), betDate]);
+  }, [legs?.map(l => `${l?.league}-${l?.date || ''}`).join(','), userTimezone]);
 
   // Fetch players when game changes for each leg
   useEffect(() => {
@@ -342,14 +354,14 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                   )}
                 </div>
 
-                {/* Date Selector - uses bet date, but can be overridden per leg if needed */}
+                {/* Date Selector - per leg */}
                 <div className="space-y-2">
                   <Label>Event Date</Label>
                   <Input
                     type="date"
-                    value={betDate || new Date().toISOString().split("T")[0]}
+                    value={legs?.[index]?.date || new Date().toISOString().split("T")[0]}
                     onChange={(e) => {
-                      setValue("date", e.target.value);
+                      setValue(`legs.${index}.date`, e.target.value);
                       // Clear games when date changes
                       setGamesByLeg((prev) => {
                         const newState = { ...prev };
@@ -362,12 +374,12 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                         return newState;
                       });
                     }}
-                    className="w-full"
+                    className="w-full cursor-pointer"
                   />
                 </div>
 
                 {/* Event Selector */}
-                {legs?.[index]?.league && betDate && (
+                {legs?.[index]?.league && legs?.[index]?.date && (
                   <div className="space-y-2">
                     <Label htmlFor={`legs.${index}.gameId`}>
                       Event <span className="text-destructive">*</span>
@@ -391,15 +403,21 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                         <SelectValue placeholder={loadingGames[index] ? "Loading games..." : "Select event"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {gamesByLeg[index]?.map((game) => (
-                          <SelectItem key={game.id} value={game.id}>
-                            {game.awayTeam.name} vs {game.homeTeam.name}
-                            {game.startTime && ` • ${new Date(game.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-                          </SelectItem>
-                        ))}
+                        {gamesByLeg[index]?.map((game) => {
+                          const startTimeLabel = game.startTime
+                            ? formatDateInTimezone(new Date(game.startTime), userTimezone).split(", ")[1] || ""
+                            : null;
+
+                          return (
+                            <SelectItem key={game.id} value={game.id}>
+                              {game.awayTeam.name} vs {game.homeTeam.name}
+                              {startTimeLabel ? ` • ${startTimeLabel}` : ""}
+                            </SelectItem>
+                          );
+                        })}
                         {(!gamesByLeg[index] || gamesByLeg[index].length === 0) && !loadingGames[index] && (
                           <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                            No games found for this date
+                            No games found for this date. Make sure you've selected the correct year (games may be in 2025).
                           </div>
                         )}
                       </SelectContent>
@@ -661,6 +679,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
                 teamId: undefined,
                 qualifier: undefined as any,
                 threshold: undefined,
+                date: new Date().toISOString().split("T")[0],
                 odds: 0,
                 result: "pending",
               });
@@ -681,39 +700,65 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
       <Card>
         <CardHeader>
           <CardTitle>Bet Details</CardTitle>
-          <CardDescription>Enter the wager and date for your bet</CardDescription>
+          <CardDescription>Enter the wager and bet modifiers</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="wager">
-                Wager ($) <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="wager"
-                type="number"
-                step="0.01"
-                min="0.01"
-                placeholder="0.00"
-                className={errors.wager ? "border-destructive" : ""}
-                onWheel={(e) => e.currentTarget.blur()}
-                {...register("wager")}
-              />
-              {errors.wager && <p className="text-sm text-destructive">{errors.wager.message}</p>}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="wager">
+              Wager ($) <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="wager"
+              type="number"
+              step="0.01"
+              min="0.01"
+              placeholder="0.00"
+              className={errors.wager ? "border-destructive" : ""}
+              onWheel={(e) => e.currentTarget.blur()}
+              {...register("wager")}
+            />
+            {errors.wager && <p className="text-sm text-destructive">{errors.wager.message}</p>}
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="date">
-                Date <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="date"
-                type="date"
-                className={errors.date ? "border-destructive" : ""}
-                {...register("date")}
-              />
-              {errors.date && <p className="text-sm text-destructive">{errors.date.message}</p>}
-            </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="isBonusBet"
+              checked={isBonusBet}
+              onCheckedChange={(checked) => setValue("isBonusBet", checked === true)}
+            />
+            <Label htmlFor="isBonusBet" className="cursor-pointer">
+              Bonus Bet (placed with credits - profit only, no stake returned)
+            </Label>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="boostPercentage">Boost Percentage (Optional)</Label>
+            <Input
+              id="boostPercentage"
+              type="number"
+              step="1"
+              min="0"
+              max="100"
+              placeholder="Leave empty for no boost, or enter 25, 30, 50, etc."
+              {...register("boostPercentage")}
+            />
+            <p className="text-xs text-muted-foreground">
+              Leave empty for no boost. Enter a percentage (e.g., 40 for 40% boost). The payout will be multiplied by (1 + boost% / 100).
+            </p>
+            {errors.boostPercentage && (
+              <p className="text-sm text-destructive">{errors.boostPercentage.message}</p>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="isNoSweat"
+              checked={isNoSweat}
+              onCheckedChange={(checked) => setValue("isNoSweat", checked === true)}
+            />
+            <Label htmlFor="isNoSweat" className="cursor-pointer">
+              No Sweat (refund as bonus bets if the bet loses)
+            </Label>
           </div>
         </CardContent>
       </Card>
@@ -781,56 +826,6 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
           </CardContent>
         </Card>
       )}
-
-      {/* Modifiers Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Modifiers</CardTitle>
-          <CardDescription>Additional bet characteristics that affect payout calculation</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="isBonusBet"
-              checked={isBonusBet}
-              onCheckedChange={(checked) => setValue("isBonusBet", checked === true)}
-            />
-            <Label htmlFor="isBonusBet" className="cursor-pointer">
-              Bonus Bet (placed with credits - profit only, no stake returned)
-            </Label>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="boostPercentage">Boost Percentage (Optional)</Label>
-            <Input
-              id="boostPercentage"
-              type="number"
-              step="1"
-              min="0"
-              max="100"
-              placeholder="Leave empty for no boost, or enter 25, 30, 50, etc."
-              {...register("boostPercentage")}
-            />
-            <p className="text-xs text-muted-foreground">
-              Leave empty for no boost. Enter a percentage (e.g., 40 for 40% boost). The payout will be multiplied by (1 + boost% / 100).
-            </p>
-            {errors.boostPercentage && (
-              <p className="text-sm text-destructive">{errors.boostPercentage.message}</p>
-            )}
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="isNoSweat"
-              checked={isNoSweat}
-              onCheckedChange={(checked) => setValue("isNoSweat", checked === true)}
-            />
-            <Label htmlFor="isNoSweat" className="cursor-pointer">
-              No Sweat (refund as bonus bets if the bet loses)
-            </Label>
-          </div>
-        </CardContent>
-      </Card>
 
       <div className="flex justify-end space-x-4">
         <Button type="submit" disabled={isSubmitting} size="lg" className="min-h-[44px] min-w-[120px]">

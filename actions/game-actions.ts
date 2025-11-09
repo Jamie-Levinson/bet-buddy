@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { LeagueEnum } from "@prisma/client";
+import { getUtcRangeForTimezoneDate } from "@/lib/timezone-helpers";
 
 export interface GameWithTeams {
   id: string;
@@ -33,22 +34,17 @@ export interface PlayerOption {
  */
 export async function getGamesByLeagueAndDate(
   league: LeagueEnum,
-  date: Date
+  dateString: string,
+  timezone: string = "America/New_York"
 ): Promise<GameWithTeams[]> {
-  // Normalize date to start of day
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-  
-  // End of day
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
+  const { start, end } = getUtcRangeForTimezoneDate(dateString, timezone);
 
   const games = await prisma.game.findMany({
     where: {
       league,
       startTime: {
-        gte: startOfDay,
-        lte: endOfDay,
+        gte: start,
+        lte: end,
       },
     },
     include: {

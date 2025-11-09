@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteBetButton } from "@/components/DeleteBetButton";
 import { UpdateBetForm } from "@/components/UpdateBetForm";
 import { type BetFormData } from "@/lib/validations/bet";
-import { OddsFormatSelector } from "@/components/OddsFormatSelector";
 
 interface BetDetailPageProps {
   params: Promise<{
@@ -35,11 +34,18 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
 
   const defaultValues: Partial<BetFormData> = {
     wager: bet.wager,
-    date: format(new Date(bet.date), "yyyy-MM-dd"),
     isBonusBet: bet.isBonusBet,
     boostPercentage: bet.boostPercentage ?? undefined,
     isNoSweat: bet.isNoSweat,
     legs: bet.legs.map((leg) => ({
+      league: leg.league!,
+      gameId: leg.gameId!,
+      market: leg.market!,
+      playerId: leg.playerId ?? undefined,
+      teamId: leg.teamId ?? undefined,
+      qualifier: leg.qualifier ?? undefined,
+      threshold: leg.threshold ?? undefined,
+      date: leg.eventDate ? format(new Date(leg.eventDate), "yyyy-MM-dd") : undefined,
       description: leg.description,
       eventName: leg.eventName,
       odds: leg.odds,
@@ -69,7 +75,6 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
           </div>
         </div>
         <div className="flex flex-row flex-nowrap gap-2">
-          <OddsFormatSelector />
           <Link href="/bets">
             <Button variant="outline" className="min-h-[44px] whitespace-nowrap">Back to Bets</Button>
           </Link>
