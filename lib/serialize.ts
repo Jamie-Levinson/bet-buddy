@@ -1,5 +1,7 @@
 // Simple serialization: convert Prisma Decimal to number, Date to string
 
+import { LeagueEnum, Market, MarketQualifier } from "@prisma/client";
+
 export type SerializedBetWithLegs = {
   id: string;
   userId: string;
@@ -23,6 +25,15 @@ export type SerializedBetWithLegs = {
     odds: number;
     result: "pending" | "win" | "loss" | "void";
     createdAt: string;
+    // Canonical fields
+    league: LeagueEnum | null;
+    gameId: string | null;
+    playerId: string | null;
+    teamId: string | null;
+    market: Market | null;
+    qualifier: MarketQualifier | null;
+    threshold: number | null;
+    espnEventId: string | null;
   }>;
 };
 
@@ -30,7 +41,6 @@ export type SerializedBetWithLegs = {
 export function serializeBet(bet: any): SerializedBetWithLegs {
 
   const toNumber = (value: any): number => {
-    // Handle null/undefined
     if (value === null || value === undefined) {
       return 0;
     }
@@ -38,11 +48,9 @@ export function serializeBet(bet: any): SerializedBetWithLegs {
     if (value && typeof value === 'object' && 'toNumber' in value && typeof value.toNumber === 'function') {
       return value.toNumber();
     }
-    // If it's already a number, return it
     if (typeof value === 'number') {
       return value;
     }
-    // Try to convert to number
     const num = Number(value);
     if (isNaN(num)) {
       return 0;
@@ -67,12 +75,21 @@ export function serializeBet(bet: any): SerializedBetWithLegs {
     legs: bet.legs.map((leg: any) => ({
       id: String(leg.id),
       betId: String(leg.betId),
-      description: String(leg.description),
-      eventName: String(leg.eventName),
+      description: String(leg.description || ""),
+      eventName: String(leg.eventName || ""),
       eventDate: leg.eventDate instanceof Date ? leg.eventDate.toISOString() : String(leg.eventDate),
       odds: toNumber(leg.odds),              
       result: leg.result,
-      createdAt: leg.createdAt instanceof Date ? leg.createdAt.toISOString() : String(leg.createdAt), 
+      createdAt: leg.createdAt instanceof Date ? leg.createdAt.toISOString() : String(leg.createdAt),
+      // Canonical fields
+      league: leg.league || null,
+      gameId: leg.gameId || null,
+      playerId: leg.playerId || null,
+      teamId: leg.teamId || null,
+      market: leg.market || null,
+      qualifier: leg.qualifier || null,
+      threshold: leg.threshold !== null && leg.threshold !== undefined ? toNumber(leg.threshold) : null,
+      espnEventId: leg.espnEventId || null,
     })),
   };
   

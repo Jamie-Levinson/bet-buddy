@@ -1,6 +1,5 @@
 "use client";
 
-import { signOut } from "@/actions/auth-actions";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -34,14 +33,17 @@ export function NavClient() {
               Bets
             </button>
           </Link>
-          <form action={signOut} className="inline">
+          <Link href="/account">
             <button
-              type="submit"
-              className="px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[36px] text-foreground/70 hover:text-foreground hover:bg-white/5"
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[36px] ${
+                pathname === "/account"
+                  ? "bg-primary/20 text-primary shadow-lg"
+                  : "text-foreground/70 hover:text-foreground hover:bg-white/5"
+              }`}
             >
-              Sign Out
+              Settings
             </button>
-          </form>
+          </Link>
         </div>
       </nav>
 
@@ -70,14 +72,17 @@ export function NavClient() {
               Bets
             </button>
           </Link>
-          <form action={signOut} className="flex-1">
+          <Link href="/account" className="flex-1">
             <button
-              type="submit"
-              className="w-full px-3 py-2 rounded-full text-xs font-medium transition-all min-h-[44px] text-foreground/70"
+              className={`w-full px-3 py-2 rounded-full text-xs font-medium transition-all min-h-[44px] flex items-center justify-center ${
+                pathname === "/account"
+                  ? "bg-primary/20 text-primary"
+                  : "text-foreground/70"
+              }`}
             >
-              Sign Out
+              Settings
             </button>
-          </form>
+          </Link>
         </div>
       </nav>
     </>

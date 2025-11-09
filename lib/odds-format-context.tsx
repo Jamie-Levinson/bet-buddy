@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { updateOddsFormat } from "@/actions/account-actions";
 
 type OddsFormat = "decimal" | "american";
 
@@ -12,34 +13,40 @@ interface OddsFormatContextType {
 
 const OddsFormatContext = createContext<OddsFormatContextType | undefined>(undefined);
 
-const STORAGE_KEY = "betbuddy-odds-format";
-
-export function OddsFormatProvider({ children }: { children: ReactNode }) {
-  const [format, setFormatState] = useState<OddsFormat>("decimal");
+export function OddsFormatProvider({
+  children,
+  initialFormat,
+}: {
+  children: ReactNode;
+  initialFormat?: OddsFormat;
+}) {
+  const [format, setFormatState] = useState<OddsFormat>(initialFormat || "decimal");
   const [isMounted, setIsMounted] = useState(false);
 
-  // Load from localStorage on mount
+  // Initialize from prop on mount
   useEffect(() => {
     setIsMounted(true);
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "american" || stored === "decimal") {
-      setFormatState(stored);
+    if (initialFormat) {
+      setFormatState(initialFormat);
     }
-  }, []);
+  }, [initialFormat]);
 
-  // Sync to localStorage when format changes
-  useEffect(() => {
-    if (isMounted) {
-      localStorage.setItem(STORAGE_KEY, format);
-    }
-  }, [format, isMounted]);
-
-  const setFormat = (newFormat: OddsFormat) => {
+  const setFormat = async (newFormat: OddsFormat) => {
+    const previousFormat = format;
     setFormatState(newFormat);
+    // Save to user profile
+    try {
+      await updateOddsFormat(newFormat);
+    } catch (error) {
+      console.error("Failed to update odds format:", error);
+      // Revert on error
+      setFormatState(previousFormat);
+    }
   };
 
   const toggleFormat = () => {
-    setFormatState((prev) => (prev === "decimal" ? "american" : "decimal"));
+    const newFormat = format === "decimal" ? "american" : "decimal";
+    setFormat(newFormat);
   };
 
   return (
