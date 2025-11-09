@@ -1,8 +1,15 @@
 import { getTimezoneList } from "@/lib/timezone-helpers";
 import { redirect } from "next/navigation";
 import { AccountSettingsForm } from "./components/AccountSettingsForm";
+import { getCurrentUser } from "@/lib/auth";
 
 export default async function AccountPage() {
+  // Middleware already authenticated, but check here for redirect
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
   let timezones;
 
   try {

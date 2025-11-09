@@ -20,7 +20,7 @@ export default async function BetsPage({ searchParams }: BetsPageProps) {
 
   const params = await searchParams;
   const page = parseInt(params.page || "1", 10);
-  const { bets, total, totalPages } = await getBets(page, 20);
+  const { bets, total, totalPages } = await getBets(user.id, page, 20);
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 pb-24 sm:pb-32">

@@ -5,6 +5,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { createServerSupabaseClient } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import {
   updatePasswordSchema,
   updateProfileSchema,
@@ -22,29 +24,34 @@ export interface UserProfile {
 
 /**
  * Get user profile, creating it if it doesn't exist
+ * Cached per request (React cache) and across requests (30s TTL)
  */
-export async function getUserProfile(): Promise<UserProfile> {
-  const user = await getCurrentUser();
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
-
-  // Always get email from Supabase auth user (never from database)
-  const userEmail = user.email || "";
-
+const getCachedUserProfile = cache(async (userId: string, userEmail: string): Promise<UserProfile> => {
   // Try to find existing profile
   let profile = await prisma.user.findUnique({
-    where: { id: user.id },
+    where: { id: userId },
+    select: {
+      id: true,
+      nickname: true,
+      timezone: true,
+      preferredOddsFormat: true,
+    },
   });
 
   // Create profile if it doesn't exist
   if (!profile) {
     profile = await prisma.user.create({
       data: {
-        id: user.id,
+        id: userId,
         nickname: userEmail, // Default to email if not provided during sign-up
         timezone: "America/New_York",
         preferredOddsFormat: "decimal",
+      },
+      select: {
+        id: true,
+        nickname: true,
+        timezone: true,
+        preferredOddsFormat: true,
       },
     });
   }
@@ -56,6 +63,31 @@ export async function getUserProfile(): Promise<UserProfile> {
     timezone: profile.timezone,
     preferredOddsFormat: profile.preferredOddsFormat as "decimal" | "american",
   };
+});
+
+/**
+ * Get user profile, creating it if it doesn't exist
+ * Uses React cache() for request deduplication and unstable_cache for cross-request caching
+ */
+export async function getUserProfile(): Promise<UserProfile | null> {
+  // Get user from auth (reads from session cookie - fast, not a network call)
+  const user = await getCurrentUser();
+  if (!user) {
+    return null; // Not logged in - return null instead of throwing
+  }
+
+  const userEmail = user.email || "";
+
+  // Use unstable_cache for cross-request caching (30 second TTL)
+  // React cache() deduplicates within a request
+  return unstable_cache(
+    async () => getCachedUserProfile(user.id, userEmail),
+    [`user-profile-${user.id}`],
+    {
+      revalidate: 30, // Cache for 30 seconds
+      tags: [`user-profile-${user.id}`],
+    }
+  )();
 }
 
 /**
@@ -64,7 +96,7 @@ export async function getUserProfile(): Promise<UserProfile> {
 export async function getUserTimezone(): Promise<string> {
   try {
     const profile = await getUserProfile();
-    return profile.timezone;
+    return profile?.timezone || "America/New_York";
   } catch {
     return "America/New_York";
   }

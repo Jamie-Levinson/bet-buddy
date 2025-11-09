@@ -55,34 +55,34 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
 
   return (
     <div className="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8 pb-24 sm:pb-32">
-      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Edit Bet</h1>
-          <div className="mt-2 flex items-center gap-2">
-            <Badge
-              className={
-                bet.result === "pending"
-                  ? "bg-yellow-500"
-                  : bet.result === "win"
-                    ? "bg-win-green"
-                    : bet.result === "loss"
-                      ? "bg-destructive"
-                      : "bg-muted"
-              }
-            >
-              {bet.result === "pending" ? "Unsettled" : bet.result.charAt(0).toUpperCase() + bet.result.slice(1)}
-            </Badge>
+        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Edit Bet</h1>
+            <div className="mt-2 flex items-center gap-2">
+              <Badge
+                className={
+                  bet.result === "pending"
+                    ? "bg-yellow-500"
+                    : bet.result === "win"
+                      ? "bg-win-green"
+                      : bet.result === "loss"
+                        ? "bg-destructive"
+                        : "bg-muted"
+                }
+              >
+                {bet.result === "pending" ? "Unsettled" : bet.result.charAt(0).toUpperCase() + bet.result.slice(1)}
+              </Badge>
+            </div>
+          </div>
+          <div className="flex flex-row flex-nowrap gap-2">
+            <Link href="/bets">
+              <Button variant="outline" className="min-h-[44px] whitespace-nowrap">Back to Bets</Button>
+            </Link>
+            <DeleteBetButton betId={id} />
           </div>
         </div>
-        <div className="flex flex-row flex-nowrap gap-2">
-          <Link href="/bets">
-            <Button variant="outline" className="min-h-[44px] whitespace-nowrap">Back to Bets</Button>
-          </Link>
-          <DeleteBetButton betId={id} />
-        </div>
+        <UpdateBetForm betId={id} defaultValues={defaultValues} />
       </div>
-      <UpdateBetForm betId={id} defaultValues={defaultValues} />
-    </div>
   );
 }
 

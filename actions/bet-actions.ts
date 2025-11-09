@@ -101,21 +101,44 @@ export async function createBet(data: BetFormData) {
   return serializeBet(bet);
 }
 
-export async function getBets(page = 1, pageSize = 20) {
-  const user = await getCurrentUser();
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
-
+export async function getBets(userId: string, page = 1, pageSize = 20) {
   const skip = (page - 1) * pageSize;
 
   const [bets, total] = await Promise.all([
     prisma.bet.findMany({
       where: {
-        userId: user.id,
+        userId,
       },
-      include: {
-        legs: true,
+      select: {
+        id: true,
+        wager: true,
+        payout: true,
+        odds: true,
+        date: true,
+        result: true,
+        betType: true,
+        isBonusBet: true,
+        boostPercentage: true,
+        isNoSweat: true,
+        createdAt: true,
+        updatedAt: true,
+        legs: {
+          select: {
+            id: true,
+            description: true,
+            eventName: true,
+            eventDate: true,
+            odds: true,
+            result: true,
+            league: true,
+            market: true,
+            playerId: true,
+            teamId: true,
+            qualifier: true,
+            threshold: true,
+            createdAt: true,
+          },
+        },
       },
       orderBy: [
         { date: "desc" },
@@ -126,7 +149,7 @@ export async function getBets(page = 1, pageSize = 20) {
     }),
     prisma.bet.count({
       where: {
-        userId: user.id,
+        userId,
       },
     }),
   ]);

@@ -7,21 +7,18 @@ export async function UserProviderWrapper({
 }: {
   children: React.ReactNode;
 }) {
-  let profile;
-  let initialFormat: "decimal" | "american" = "decimal";
+  // Fetch user profile once per request (React cache() ensures deduplication)
+  // Returns null if not logged in (for login/signup pages)
+  const profile = await getUserProfile();
 
-  try {
-    profile = await getUserProfile();
-    initialFormat = profile.preferredOddsFormat;
-  } catch {
-    // If profile fetch fails, redirect will happen at page level
-    // For now, use defaults
+  // If not logged in, render children without providers (login/signup pages)
+  if (!profile) {
     return <>{children}</>;
   }
 
   return (
     <UserProvider profile={profile}>
-      <OddsFormatProvider initialFormat={initialFormat}>
+      <OddsFormatProvider initialFormat={profile.preferredOddsFormat}>
         {children}
       </OddsFormatProvider>
     </UserProvider>

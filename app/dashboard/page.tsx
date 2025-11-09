@@ -7,13 +7,14 @@ import { Analytics } from "@/components/Analytics";
 import { WelcomeMessage } from "./WelcomeMessage";
 
 export default async function DashboardPage() {
+  // Middleware already authenticated, but check here for redirect
   const user = await getCurrentUser();
-
   if (!user) {
     redirect("/login");
   }
 
-  const { bets } = await getBets(1, 100); // Get more bets for analytics
+  // Fetch bets (user profile already fetched in UserProviderWrapper at root)
+  const betsResult = await getBets(user.id, 1, 100);
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 pb-24 sm:pb-32 max-w-full">
@@ -33,8 +34,7 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
-      <Analytics bets={bets} />
+      <Analytics bets={betsResult.bets} />
     </div>
   );
 }
-
