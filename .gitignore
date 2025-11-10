@@ -32,6 +32,18 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!env.example
+
+# google cloud credentials
+google-cloud-account-file.json
+*-key.json
+*credentials*.json
+
+# OCR test screenshots (large binary files)
+*.jpg
+*.jpeg
+*.png
+!public/*.png
 
 # vercel
 .vercel
