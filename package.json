@@ -7,7 +7,10 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "sync:daily": "tsx scripts/sync-daily.ts"
+    "sync:daily": "tsx scripts/sync-daily.ts",
+    "db:test": "tsx scripts/test-db-connection.ts",
+    "db:migrate": "npx prisma migrate deploy",
+    "db:migrate:dev": "npx prisma migrate dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

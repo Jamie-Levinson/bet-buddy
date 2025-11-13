@@ -41,3 +41,14 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
+
+# google cloud credentials
+google-cloud-account-file.json
+*-key.json
+*credentials*.json
+
+# OCR test screenshots (large binary files)
+*.jpg
+*.jpeg
+*.png
+!public/*.png

@@ -242,10 +242,11 @@ export async function syncGames(
     const currentDate = new Date(startDate);
     const actualEndDate = new Date(endDate);
     
-    // Don't sync future dates - only go up to yesterday
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const finalEndDate = actualEndDate > yesterday ? yesterday : actualEndDate;
+    // Allow syncing future dates for scheduled games
+    // But cap at a reasonable future date (1 year from now max)
+    const maxFutureDate = new Date();
+    maxFutureDate.setFullYear(maxFutureDate.getFullYear() + 1);
+    const finalEndDate = actualEndDate > maxFutureDate ? maxFutureDate : actualEndDate;
     
     const totalDays = Math.ceil((finalEndDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
     console.log(`Total days to sync: ${totalDays}\n`);
@@ -272,8 +273,9 @@ export async function syncGames(
             continue;
           }
           
-          // Only process completed games
-          if (!competition.status.type.completed) {
+          // Process both completed and scheduled games
+          // Skip only if status is unknown/invalid
+          if (!competition.status || !competition.status.type) {
             continue;
           }
           

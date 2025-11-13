@@ -49,4 +49,7 @@ CREATE INDEX "legs_bet_id_idx" ON "legs"("bet_id");
 CREATE INDEX "legs_event_name_idx" ON "legs"("event_name");
 
 -- AddForeignKey
+ALTER TABLE "bets" ADD CONSTRAINT "bets_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "legs" ADD CONSTRAINT "legs_bet_id_fkey" FOREIGN KEY ("bet_id") REFERENCES "bets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
