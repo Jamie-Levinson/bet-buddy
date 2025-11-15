@@ -16,24 +16,30 @@ export type SerializedBetWithLegs = {
   isNoSweat: boolean;
   createdAt: string;
   updatedAt: string;
-  legs: Array<{
+  legGroups: Array<{
     id: string;
     betId: string;
-    description: string;
-    eventName: string;
-    eventDate: string;
     odds: number;
-    result: "pending" | "win" | "loss" | "void";
-    createdAt: string;
-    // Canonical fields
-    league: LeagueEnum | null;
     gameId: string | null;
-    playerId: string | null;
-    teamId: string | null;
-    market: Market | null;
-    qualifier: MarketQualifier | null;
-    threshold: number | null;
-    espnEventId: string | null;
+    order: number | null;
+    legs: Array<{
+      id: string;
+      legGroupId: string;
+      description: string;
+      eventName: string;
+      eventDate: string;
+      result: "pending" | "win" | "loss" | "void";
+      createdAt: string;
+      // Canonical fields
+      league: LeagueEnum | null;
+      gameId: string | null;
+      playerId: string | null;
+      teamId: string | null;
+      market: Market | null;
+      qualifier: MarketQualifier | null;
+      threshold: number | null;
+      espnEventId: string | null;
+    }>;
   }>;
 };
 
@@ -72,24 +78,30 @@ export function serializeBet(bet: any): SerializedBetWithLegs {
     isNoSweat: Boolean(bet.isNoSweat),
     createdAt: bet.createdAt instanceof Date ? bet.createdAt.toISOString() : String(bet.createdAt),  
     updatedAt: bet.updatedAt instanceof Date ? bet.updatedAt.toISOString() : String(bet.updatedAt),  
-    legs: bet.legs.map((leg: any) => ({
-      id: String(leg.id),
-      betId: String(leg.betId),
-      description: String(leg.description || ""),
-      eventName: String(leg.eventName || ""),
-      eventDate: leg.eventDate instanceof Date ? leg.eventDate.toISOString() : String(leg.eventDate),
-      odds: toNumber(leg.odds),              
-      result: leg.result,
-      createdAt: leg.createdAt instanceof Date ? leg.createdAt.toISOString() : String(leg.createdAt),
-      // Canonical fields
-      league: leg.league || null,
-      gameId: leg.gameId || null,
-      playerId: leg.playerId || null,
-      teamId: leg.teamId || null,
-      market: leg.market || null,
-      qualifier: leg.qualifier || null,
-      threshold: leg.threshold !== null && leg.threshold !== undefined ? toNumber(leg.threshold) : null,
-      espnEventId: leg.espnEventId || null,
+    legGroups: (bet.legGroups || []).map((group: any) => ({
+      id: String(group.id),
+      betId: String(group.betId),
+      odds: toNumber(group.odds),
+      gameId: group.gameId ? String(group.gameId) : null,
+      order: group.order !== null && group.order !== undefined ? Number(group.order) : null,
+      legs: (group.legs || []).map((leg: any) => ({
+        id: String(leg.id),
+        legGroupId: String(leg.legGroupId),
+        description: String(leg.description || ""),
+        eventName: String(leg.eventName || ""),
+        eventDate: leg.eventDate instanceof Date ? leg.eventDate.toISOString() : String(leg.eventDate),
+        result: leg.result,
+        createdAt: leg.createdAt instanceof Date ? leg.createdAt.toISOString() : String(leg.createdAt),
+        // Canonical fields
+        league: leg.league || null,
+        gameId: leg.gameId || null,
+        playerId: leg.playerId || null,
+        teamId: leg.teamId || null,
+        market: leg.market || null,
+        qualifier: leg.qualifier || null,
+        threshold: leg.threshold !== null && leg.threshold !== undefined ? toNumber(leg.threshold) : null,
+        espnEventId: leg.espnEventId || null,
+      })),
     })),
   };
   

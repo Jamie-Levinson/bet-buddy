@@ -5,12 +5,12 @@ import { getCurrentUser } from "@/lib/auth";
 import { betFormSchema, type BetFormData } from "@/lib/validations/bet";
 import { revalidatePath } from "next/cache";
 import { serializeBet, serializeBets, type SerializedBetWithLegs } from "@/lib/serialize";
-import { calculateBetResult, calculateBetOdds } from "@/lib/bet-helpers";
+import { calculateBetResultFromGroups, calculateBetOddsFromGroups } from "@/lib/bet-helpers";
 import { formatMarketDisplay } from "@/lib/market-helpers";
 
-async function buildLegPayload(leg: BetFormData["legs"][number]) {
+async function buildLegPayload(leg: BetFormData["legGroups"][number]["legs"][number], gameId: string) {
   const game = await prisma.game.findUnique({
-    where: { id: leg.gameId },
+    where: { id: gameId },
     include: {
       homeTeam: true,
       awayTeam: true,
@@ -18,7 +18,7 @@ async function buildLegPayload(leg: BetFormData["legs"][number]) {
   });
 
   if (!game) {
-    throw new Error(`Game not found: ${leg.gameId}`);
+    throw new Error(`Game not found: ${gameId}`);
   }
 
   const eventName = `${game.awayTeam.name} vs ${game.homeTeam.name}`;
@@ -45,7 +45,7 @@ async function buildLegPayload(leg: BetFormData["legs"][number]) {
 
   return {
     league: leg.league,
-    gameId: leg.gameId,
+    gameId: gameId,
     market: leg.market,
     playerId: leg.playerId || null,
     teamId: leg.teamId || null,
@@ -55,7 +55,6 @@ async function buildLegPayload(leg: BetFormData["legs"][number]) {
     description,
     eventName,
     eventDate: game.startTime,
-    odds: leg.odds,
     result: leg.result,
   };
 }
@@ -68,10 +67,39 @@ export async function createBet(data: BetFormData) {
 
   const validated = betFormSchema.parse(data);
 
-  const betResult = calculateBetResult(validated.legs);
-  const calculatedOdds = calculateBetOdds(validated.legs);
+  // Calculate bet result from all legs in all groups
+  const betResult = calculateBetResultFromGroups(
+    validated.legGroups.map((group) => ({
+      legs: group.legs.map((leg) => ({ result: leg.result })),
+    }))
+  );
+  const calculatedOdds = calculateBetOddsFromGroups(
+    validated.legGroups.map((group) => ({ odds: group.odds }))
+  );
 
-  const legData = await Promise.all(validated.legs.map(buildLegPayload));
+  // Create leg groups with their legs
+  const legGroupsData = await Promise.all(
+    validated.legGroups.map(async (group, groupIndex) => {
+      // Determine gameId for the group (use first leg's gameId)
+      const groupGameId = group.gameId || group.legs[0]?.gameId;
+      if (!groupGameId) {
+        throw new Error(`Group ${groupIndex} must have a gameId or legs with gameId`);
+      }
+
+      const legsData = await Promise.all(
+        group.legs.map((leg) => buildLegPayload(leg, groupGameId))
+      );
+
+      return {
+        odds: group.odds,
+        gameId: groupGameId,
+        order: group.order ?? groupIndex,
+        legs: {
+          create: legsData,
+        },
+      };
+    })
+  );
 
   const bet = await prisma.bet.create({
     data: {
@@ -85,12 +113,16 @@ export async function createBet(data: BetFormData) {
       isBonusBet: validated.isBonusBet,
       boostPercentage: validated.boostPercentage ?? null,
       isNoSweat: validated.isNoSweat,
-      legs: {
-        create: legData,
+      legGroups: {
+        create: legGroupsData,
       },
     },
     include: {
-      legs: true,
+      legGroups: {
+        include: {
+          legs: true,
+        },
+      },
     },
   });
 
@@ -122,21 +154,31 @@ export async function getBets(userId: string, page = 1, pageSize = 20) {
         isNoSweat: true,
         createdAt: true,
         updatedAt: true,
-        legs: {
+        legGroups: {
           select: {
             id: true,
-            description: true,
-            eventName: true,
-            eventDate: true,
             odds: true,
-            result: true,
-            league: true,
-            market: true,
-            playerId: true,
-            teamId: true,
-            qualifier: true,
-            threshold: true,
-            createdAt: true,
+            gameId: true,
+            order: true,
+            legs: {
+              select: {
+                id: true,
+                description: true,
+                eventName: true,
+                eventDate: true,
+                result: true,
+                league: true,
+                market: true,
+                playerId: true,
+                teamId: true,
+                qualifier: true,
+                threshold: true,
+                createdAt: true,
+              },
+            },
+          },
+          orderBy: {
+            order: "asc",
           },
         },
       },
@@ -178,7 +220,14 @@ export async function getBet(id: string): Promise<SerializedBetWithLegs> {
       userId: user.id,
     },
     include: {
-      legs: true,
+      legGroups: {
+        include: {
+          legs: true,
+        },
+        orderBy: {
+          order: "asc",
+        },
+      },
     },
   });
 
@@ -198,8 +247,15 @@ export async function updateBet(id: string, data: BetFormData) {
 
   const validated = betFormSchema.parse(data);
 
-  const betResult = calculateBetResult(validated.legs);
-  const calculatedOdds = calculateBetOdds(validated.legs);
+  // Calculate bet result from all legs in all groups
+  const betResult = calculateBetResultFromGroups(
+    validated.legGroups.map((group) => ({
+      legs: group.legs.map((leg) => ({ result: leg.result })),
+    }))
+  );
+  const calculatedOdds = calculateBetOddsFromGroups(
+    validated.legGroups.map((group) => ({ odds: group.odds }))
+  );
 
   // Verify ownership
   const existingBet = await prisma.bet.findFirst({
@@ -213,7 +269,29 @@ export async function updateBet(id: string, data: BetFormData) {
     throw new Error("Bet not found");
   }
 
-  const legData = await Promise.all(validated.legs.map(buildLegPayload));
+  // Create leg groups with their legs
+  const legGroupsData = await Promise.all(
+    validated.legGroups.map(async (group, groupIndex) => {
+      // Determine gameId for the group (use first leg's gameId)
+      const groupGameId = group.gameId || group.legs[0]?.gameId;
+      if (!groupGameId) {
+        throw new Error(`Group ${groupIndex} must have a gameId or legs with gameId`);
+      }
+
+      const legsData = await Promise.all(
+        group.legs.map((leg) => buildLegPayload(leg, groupGameId))
+      );
+
+      return {
+        odds: group.odds,
+        gameId: groupGameId,
+        order: group.order ?? groupIndex,
+        legs: {
+          create: legsData,
+        },
+      };
+    })
+  );
 
   const bet = await prisma.bet.update({
     where: {
@@ -229,13 +307,20 @@ export async function updateBet(id: string, data: BetFormData) {
       isBonusBet: validated.isBonusBet,
       boostPercentage: validated.boostPercentage ?? null,
       isNoSweat: validated.isNoSweat,
-      legs: {
+      legGroups: {
         deleteMany: {},
-        create: legData,
+        create: legGroupsData,
       },
     },
     include: {
-      legs: true,
+      legGroups: {
+        include: {
+          legs: true,
+        },
+        orderBy: {
+          order: "asc",
+        },
+      },
     },
   });
 

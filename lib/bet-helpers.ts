@@ -4,7 +4,7 @@ type BetResult = "pending" | "win" | "loss" | "void";
 
 interface Leg {
   result: BetResult;
-  odds: number;
+  odds?: number; // Optional for legacy support
 }
 
 /**
@@ -30,16 +30,39 @@ export function calculateBetResult(legs: Leg[]): BetResult {
 }
 
 /**
- * Calculate bet odds by multiplying non-void leg odds
+ * Calculate bet result from leg groups
+ * All legs in all groups must win for the bet to win
+ */
+export function calculateBetResultFromGroups(
+  groups: Array<{ legs: Array<{ result: BetResult }> }>
+): BetResult {
+  // Flatten all legs from all groups
+  const allLegs = groups.flatMap((group) => group.legs);
+  return calculateBetResult(allLegs);
+}
+
+/**
+ * Calculate bet odds by multiplying non-void leg odds (legacy - for individual legs)
  */
 export function calculateBetOdds(legs: Leg[]): number {
-  const nonVoidLegs = legs.filter((leg) => leg.result !== "void" && leg.odds !== 0);
+  const nonVoidLegs = legs.filter((leg) => leg.result !== "void" && leg.odds !== undefined && leg.odds !== 0);
 
   if (nonVoidLegs.length === 0) {
     return 1.0;
   }
 
-  return nonVoidLegs.reduce((acc, leg) => acc * leg.odds, 1);
+  return nonVoidLegs.reduce((acc, leg) => acc * (leg.odds || 1), 1);
+}
+
+/**
+ * Calculate bet odds from leg groups by multiplying group odds
+ */
+export function calculateBetOddsFromGroups(groups: Array<{ odds: number }>): number {
+  if (groups.length === 0) {
+    return 1.0;
+  }
+
+  return groups.reduce((acc, group) => acc * group.odds, 1);
 }
 
 /**
@@ -52,6 +75,10 @@ export function getBetTypeLabel(betType: string, legCount: number): string {
   
   if (betType === "same_game_parlay") {
     return `${legCount} leg same game parlay`;
+  }
+  
+  if (betType === "same_game_parlay_plus") {
+    return "Same game parlay+";
   }
   
   return `${legCount} leg parlay`;

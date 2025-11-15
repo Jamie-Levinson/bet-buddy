@@ -37,19 +37,23 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
     isBonusBet: bet.isBonusBet,
     boostPercentage: bet.boostPercentage ?? undefined,
     isNoSweat: bet.isNoSweat,
-    legs: bet.legs.map((leg) => ({
-      league: leg.league!,
-      gameId: leg.gameId!,
-      market: leg.market!,
-      playerId: leg.playerId ?? undefined,
-      teamId: leg.teamId ?? undefined,
-      qualifier: leg.qualifier ?? undefined,
-      threshold: leg.threshold ?? undefined,
-      date: leg.eventDate ? format(new Date(leg.eventDate), "yyyy-MM-dd") : undefined,
-      description: leg.description,
-      eventName: leg.eventName,
-      odds: leg.odds,
-      result: leg.result || "pending",
+    // Convert legGroups to events for editing (one legGroup = one event)
+    events: bet.legGroups.map((group) => ({
+      gameId: group.gameId || "",
+      odds: group.odds,
+      legs: group.legs.map((leg) => ({
+        league: leg.league!,
+        gameId: leg.gameId!,
+        market: leg.market!,
+        playerId: leg.playerId ?? undefined,
+        teamId: leg.teamId ?? undefined,
+        qualifier: leg.qualifier ?? undefined,
+        threshold: leg.threshold ?? undefined,
+        date: leg.eventDate ? format(new Date(leg.eventDate), "yyyy-MM-dd") : undefined,
+        description: leg.description,
+        eventName: leg.eventName,
+        result: leg.result || "pending",
+      })),
     })),
   };
 

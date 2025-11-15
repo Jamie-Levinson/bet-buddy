@@ -7,7 +7,7 @@ import { formatMarketDisplay } from "@/lib/market-helpers";
 import type { SerializedBetWithLegs } from "@/lib/serialize";
 
 interface LegCardProps {
-  leg: SerializedBetWithLegs["legs"][number];
+  leg: SerializedBetWithLegs["legGroups"][number]["legs"][number];
 }
 
 export function LegCard({ leg }: LegCardProps) {
@@ -34,9 +34,6 @@ export function LegCard({ leg }: LegCardProps) {
           <div className="text-xs text-muted-foreground mt-1">
             {leg.eventName} • {formatEventDate(leg.eventDate, userTimezone)}
           </div>
-        </div>
-        <div className="text-right ml-4">
-          <div className="font-semibold">{formatOdds(leg.odds, format, leg.result)}</div>
         </div>
       </div>
     </div>

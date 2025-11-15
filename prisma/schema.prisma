@@ -23,6 +23,7 @@ enum BetResult {
 enum BetType {
   straight
   same_game_parlay
+  same_game_parlay_plus
   parlay
 }
 
@@ -169,8 +170,8 @@ model Bet {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  legs Leg[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legGroups LegGroup[]
 
   @@index([userId])
   @@index([date])
@@ -232,6 +233,7 @@ model Game {
   homePeriodScores Json? // Array of scores per period [q1, q2, q3, q4, ot1?, ot2?, ...]
   awayPeriodScores Json? // Array of scores per period [q1, q2, q3, q4, ot1?, ot2?, ...]
   legs             Leg[]
+  legGroups        LegGroup[]
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
@@ -258,13 +260,30 @@ model Alias {
   @@index([source])
 }
 
+model LegGroup {
+  id        String   @id @default(uuid())
+  betId     String   @map("bet_id")
+  odds      Decimal  @db.Decimal(10, 2)
+  gameId    String?  @map("game_id")
+  order     Int? // For ordering groups in SGP+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  bet  Bet   @relation(fields: [betId], references: [id], onDelete: Cascade)
+  game Game? @relation(fields: [gameId], references: [id])
+  legs Leg[]
+
+  @@index([betId])
+  @@index([gameId])
+  @@map("leg_groups")
+}
+
 model Leg {
   id          String    @id @default(uuid())
-  betId       String    @map("bet_id")
+  legGroupId  String    @map("leg_group_id")
   description String    @db.Text
   eventName   String    @map("event_name")
   eventDate   DateTime  @map("event_date")
-  odds        Decimal   @db.Decimal(10, 2)
   result      BetResult
   createdAt   DateTime  @default(now()) @map("created_at")
 
@@ -282,12 +301,12 @@ model Leg {
   qualifier MarketQualifier? // OVER/UNDER/NONE (not used for spread markets)
 
   // Relations
-  bet    Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)
-  team   Team?   @relation(fields: [teamId], references: [id])
-  player Player? @relation(fields: [playerId], references: [id])
-  game   Game?   @relation(fields: [gameId], references: [id])
+  legGroup LegGroup @relation(fields: [legGroupId], references: [id], onDelete: Cascade)
+  team     Team?    @relation(fields: [teamId], references: [id])
+  player   Player?  @relation(fields: [playerId], references: [id])
+  game     Game?    @relation(fields: [gameId], references: [id])
 
-  @@index([betId])
+  @@index([legGroupId])
   @@index([eventName])
   @@index([playerId])
   @@index([teamId])
