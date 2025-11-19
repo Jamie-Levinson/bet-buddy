@@ -103,6 +103,16 @@ export const betFormSchema = z.object({
     z.number().int().min(0).max(100).optional()
   ),
   isNoSweat: z.boolean().default(false),
+  sportsbook: z.enum([
+    "fanduel",
+    "draftkings",
+    "bet365",
+    "caesars",
+    "mgm",
+    "pointsbet",
+    "betmgm",
+    "unibet"
+  ] as const).optional(),
 }).transform((data) => {
   // Transform events to legGroups (one event = one leg group)
   const legGroups = data.events.map((event, index) => ({

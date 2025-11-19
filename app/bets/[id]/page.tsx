@@ -37,6 +37,7 @@ export default async function BetDetailPage({ params }: BetDetailPageProps) {
     isBonusBet: bet.isBonusBet,
     boostPercentage: bet.boostPercentage ?? undefined,
     isNoSweat: bet.isNoSweat,
+    sportsbook: (bet.sportsbook as BetFormData["sportsbook"]) ?? undefined,
     // Convert legGroups to events for editing (one legGroup = one event)
     events: bet.legGroups.map((group) => ({
       gameId: group.gameId || "",

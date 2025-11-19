@@ -135,6 +135,7 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
   const isBonusBet = useWatch({ control, name: "isBonusBet" });
   const boostPercentage = useWatch({ control, name: "boostPercentage" });
   const isNoSweat = useWatch({ control, name: "isNoSweat" });
+  const sportsbook = useWatch({ control, name: "sportsbook" });
 
   // Get user timezone from context
   const profile = useUser();
@@ -354,6 +355,28 @@ export function BetForm({ onSubmit, defaultValues }: BetFormProps) {
             <Label htmlFor="isNoSweat" className="cursor-pointer">
               No Sweat
             </Label>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="sportsbook">Sportsbook (Optional)</Label>
+            <Select
+              value={sportsbook || ""}
+              onValueChange={(value) => setValue("sportsbook", (value || undefined) as BetFormData["sportsbook"])}
+            >
+              <SelectTrigger id="sportsbook">
+                <SelectValue placeholder="Select sportsbook" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fanduel">FanDuel</SelectItem>
+                <SelectItem value="draftkings">DraftKings</SelectItem>
+                <SelectItem value="bet365">Bet365</SelectItem>
+                <SelectItem value="caesars">Caesars</SelectItem>
+                <SelectItem value="mgm">MGM</SelectItem>
+                <SelectItem value="pointsbet">PointsBet</SelectItem>
+                <SelectItem value="betmgm">BetMGM</SelectItem>
+                <SelectItem value="unibet">Unibet</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

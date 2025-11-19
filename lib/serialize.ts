@@ -14,6 +14,7 @@ export type SerializedBetWithLegs = {
   isBonusBet: boolean;
   boostPercentage: number | null;
   isNoSweat: boolean;
+  sportsbook: string | null;
   createdAt: string;
   updatedAt: string;
   legGroups: Array<{
@@ -76,6 +77,7 @@ export function serializeBet(bet: any): SerializedBetWithLegs {
     isBonusBet: Boolean(bet.isBonusBet),
     boostPercentage: bet.boostPercentage !== null ? toNumber(bet.boostPercentage) : null,
     isNoSweat: Boolean(bet.isNoSweat),
+    sportsbook: bet.sportsbook ? String(bet.sportsbook) : null,
     createdAt: bet.createdAt instanceof Date ? bet.createdAt.toISOString() : String(bet.createdAt),  
     updatedAt: bet.updatedAt instanceof Date ? bet.updatedAt.toISOString() : String(bet.updatedAt),  
     legGroups: (bet.legGroups || []).map((group: any) => ({

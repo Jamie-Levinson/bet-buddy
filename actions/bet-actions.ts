@@ -113,6 +113,7 @@ export async function createBet(data: BetFormData) {
       isBonusBet: validated.isBonusBet,
       boostPercentage: validated.boostPercentage ?? null,
       isNoSweat: validated.isNoSweat,
+      sportsbook: validated.sportsbook ?? null,
       legGroups: {
         create: legGroupsData,
       },
@@ -152,6 +153,7 @@ export async function getBets(userId: string, page = 1, pageSize = 20) {
         isBonusBet: true,
         boostPercentage: true,
         isNoSweat: true,
+        sportsbook: true,
         createdAt: true,
         updatedAt: true,
         legGroups: {
@@ -307,6 +309,7 @@ export async function updateBet(id: string, data: BetFormData) {
       isBonusBet: validated.isBonusBet,
       boostPercentage: validated.boostPercentage ?? null,
       isNoSweat: validated.isNoSweat,
+      sportsbook: validated.sportsbook ?? null,
       legGroups: {
         deleteMany: {},
         create: legGroupsData,

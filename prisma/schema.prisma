@@ -167,6 +167,7 @@ model Bet {
   isBonusBet      Boolean   @default(false) @map("is_bonus_bet")
   boostPercentage Int?      @map("boost_percentage")
   isNoSweat       Boolean   @default(false) @map("is_no_sweat")
+  sportsbook      String?   // "fanduel" | "draftkings" | "bet365" | "caesars" | "mgm" | "pointsbet" | "betmgm" | "unibet"
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
@@ -175,6 +176,8 @@ model Bet {
 
   @@index([userId])
   @@index([date])
+  @@index([sportsbook])
+  @@index([userId, sportsbook])
   @@map("bets")
 }
 
